@@ -191,7 +191,11 @@
         puzzlesStreak: streak,
         puzzlesBest: Math.max(s.puzzlesBest, streak)
       });
-      Storage.markPuzzleSolved(this.puzzle.id, true);
+Storage.markPuzzleSolved(this.puzzle.id, true);
+      Storage.bumpActivity('puzzlesSolved');
+      if (window.gtag) {
+        window.gtag('event', 'puzzle_solved', { rating: this.puzzle.rating, theme: this.puzzle.theme });
+      }
 
       this.resultEl.style.display = 'block';
       this.resultEl.className = 'puzzle-result correct';

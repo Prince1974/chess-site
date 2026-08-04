@@ -30,5 +30,19 @@
 - [x] Créer data/lessons.js (contenu pédagogique)
 
 ## Étape 6 : Finalisation
-- [x] Tester le site (test-data.js, smoke-test.js, functional-test.js)
-- [x] Préparer déploiement Netlify (netlify.toml + README)
+- [x] Tester le site
+- [x] Préparer déploiement Netlify
+
+## Étape 7 : Renommage
+- [x] Renommer ChessArena → Masterchessis (branding, bundle, storage prefix)
+
+## Étape 8 : Statistiques & SEO
+- [x] Ajouter Google Analytics 4 (Measurement ID G-L104LCSLGC)
+- [x] Enrichir la page Profil (temps de jeu, parties par mode, séries, % réussite)
+- [x] Créer robots.txt + sitemap.xml
+- [x] Ajouter balises Open Graph + Twitter Card + JSON-LD + noscript dans index.html
+- [x] Tracker GA4 : page_view, game_end, puzzle_solved, lesson_completed
+- [x] Statistiques locales : visites, temps passé, parties par mode (storage.js activity)
+- [ ] Guide Google Search Console (vérification + soumission sitemap)
+</content>
+

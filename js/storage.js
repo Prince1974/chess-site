@@ -120,6 +120,58 @@
       return this.getPrefs();
     },
 
+// ---------- Statistiques d'activité / temps ----------
+    getActivity() {
+      return this.get('activity', {
+        visits: 0,              // nombre total de visites
+        totalTimeSec: 0,        // temps total passé (secondes)
+        sessionStart: null,     // timestamp début de la session courante
+        lastVisit: null,        // timestamp de la dernière visite
+        gamesPlayed: 0,         // parties jouées (tous modes)
+        aiGames: 0, onlineGames: 0, localGames: 0,
+        puzzlesTried: 0, puzzlesSolved: 0,
+        lessonsCompleted: 0,
+        movesPlayed: 0
+      });
+    },
+    setActivity(a) { this.set('activity', a); },
+    updateActivity(patch) {
+      const a = this.getActivity();
+      this.setActivity(Object.assign({}, a, patch));
+      return this.getActivity();
+    },
+
+    // Enregistre une visite (appelé au chargement)
+    recordVisit() {
+      const a = this.getActivity();
+      const now = Date.now();
+      const patch = {
+        visits: (a.visits || 0) + 1,
+        lastVisit: now,
+        sessionStart: now
+      };
+      // Temps écoulé depuis la dernière session (si < 30 min, on compte)
+      if (a.sessionStart && (now - a.sessionStart) < 30 * 60 * 1000) {
+        const elapsed = Math.round((now - a.sessionStart) / 1000);
+        patch.totalTimeSec = (a.totalTimeSec || 0) + elapsed;
+      }
+      this.updateActivity(patch);
+    },
+
+    // Ajoute du temps passé (appelé périodiquement)
+    addActiveTime(seconds) {
+      const a = this.getActivity();
+      this.updateActivity({ totalTimeSec: (a.totalTimeSec || 0) + seconds });
+    },
+
+    // Incrémente un compteur quelconque
+    bumpActivity(key) {
+      const a = this.getActivity();
+      if (key in a) {
+        this.updateActivity({ [key]: (a[key] || 0) + 1 });
+      }
+    },
+
     // ---------- Réinitialisation ----------
     resetAll() {
       const keys = [];

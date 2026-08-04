@@ -157,8 +157,12 @@
       const mark = document.createElement('button');
       mark.className = 'btn btn-cta';
       mark.textContent = '✔ Marquer comme terminée';
-      mark.addEventListener('click', () => {
+mark.addEventListener('click', () => {
         Storage.markLessonDone(lesson.id);
+        Storage.bumpActivity('lessonsCompleted');
+        if (window.gtag) {
+          window.gtag('event', 'lesson_completed', { lesson: lesson.title, category: lesson.category });
+        }
         window.ChessUI && ChessUI.toast('Leçon terminée !', 'success');
         this._showLesson(lesson);
       });

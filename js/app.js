@@ -11,7 +11,7 @@
     currentRoute: 'home',
     game: null,
 
-    init() {
+init() {
       this._bindNav();
       this._initRoot();
       // Écouter le hash pour le routing
@@ -23,6 +23,17 @@
       setInterval(() => {
         if (this.game) this.game.updateClockDisplay();
       }, 200);
+      // Statistiques : enregistrer la visite + mesure du temps actif
+      Storage.recordVisit();
+      setInterval(() => Storage.addActiveTime(30), 30000);
+      // Envoyer à GA4 un événement de session
+      window.addEventListener('beforeunload', () => {
+        if (window.gtag) {
+          window.gtag('event', 'session_end', {
+            engagement_time_msec: (Storage.getActivity().totalTimeSec || 0) * 1000
+          });
+        }
+      });
     },
 
     _initRoot() {
@@ -47,7 +58,7 @@
       });
     },
 
-    navigate(route) {
+navigate(route) {
       const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile'];
       if (!valid.includes(route)) route = 'home';
       // Fermer la nav mobile
@@ -55,6 +66,13 @@
       // Mettre à jour hash
       if (window.location.hash !== '#/' + route) {
         history.pushState(null, '', '#/' + route);
+      }
+      // Mesure Google Analytics 4 : page_view
+      if (window.gtag) {
+        window.gtag('event', 'page_view', {
+          page_path: '/#/' + route,
+          page_title: route
+        });
       }
       this._activate(route);
     },
@@ -478,12 +496,13 @@
     },
 
     // ===================== PROFIL =====================
-    renderProfile(sec) {
+renderProfile(sec) {
       sec.innerHTML = '';
       const p = Storage.getProfile();
       const stats = Storage.getStats();
       const elo = Storage.getElo();
       const history = Storage.getHistory();
+      const act = Storage.getActivity();
 
       // Header
       const header = document.createElement('div');
@@ -507,9 +526,40 @@
       grid.innerHTML = `
         <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--accent)">${stats.wins}</div><div class="stat-label text-muted">Victoires</div></div>
         <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--danger)">${stats.losses}</div><div class="stat-label text-muted">Défaites</div></div>
-        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--gold)">${stats.draws}</div><div class="stat-label text-muted">Nulles</div></div>
+<div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--gold)">${stats.draws}</div><div class="stat-label text-muted">Nulles</div></div>
       `;
       sec.appendChild(grid);
+
+      // Détail des statistiques d'activité
+      const fmtTime = (sec) => {
+        sec = sec || 0;
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        if (h > 0) return h + ' h ' + m + ' min';
+        return m + ' min';
+      };
+      const pct = stats.puzzles ? Math.round(stats.puzzlesSolved / stats.puzzles * 100) : 0;
+      const lessonsTotal = Object.keys(window.LESSONS || {}).length;
+      const lessonsDone = Object.values(Storage.getLessons()).filter(l => l && l.done).length;
+
+      const actCard = document.createElement('div');
+      actCard.className = 'card mb-20';
+      actCard.innerHTML = `
+        <h3 class="mb-10">📊 Statistiques d'activité</h3>
+        <div class="grid grid-4">
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:22px;font-weight:800;color:var(--accent)">${act.visits || 0}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Visites</div></div>
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:22px;font-weight:800;color:var(--accent-2)">${fmtTime(act.totalTimeSec)}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Temps passé</div></div>
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:22px;font-weight:800;color:var(--gold)">${act.gamesPlayed || 0}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Parties</div></div>
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:22px;font-weight:800;color:var(--purple)">${stats.puzzlesBest || 0}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Record puzzles</div></div>
+        </div>
+        <div class="grid grid-3 mt-10">
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:18px;font-weight:800;color:var(--accent)">${act.aiGames || 0} / ${act.onlineGames || 0} / ${act.localGames || 0}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">IA / En ligne / Local</div></div>
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:18px;font-weight:800;color:var(--gold)">${pct}%</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Réussite puzzles</div></div>
+          <div class="card center" style="padding:12px"><div class="stat-value" style="font-size:18px;font-weight:800;color:var(--accent-2)">${lessonsDone}/${lessonsTotal}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Leçons</div></div>
+        </div>
+        <div class="text-muted mt-10" style="font-size:12px">Dernière visite : ${act.lastVisit ? new Date(act.lastVisit).toLocaleString('fr-FR') : '—'}</div>
+      `;
+      sec.appendChild(actCard);
 
       // Edit profile
       const edit = document.createElement('div');

@@ -3,11 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>♞ Masterchessis — Échecs Inline & Apprentissage</title>
-<meta name="description" content="Jouez aux échecs en ligne, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish.">
+<title>♞ Masterchessis — Échecs en ligne, Puzzles & Apprentissage</title>
+<meta name="description" content="Jouez aux échecs en ligne contre l'IA ou des joueurs réels, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish. Gratuit et sans inscription.">
+<meta name="keywords" content="échecs, chess, jouer aux échecs, puzzles échecs, apprendre échecs, Stockfish, analyse, Masterchessis, échecs en ligne">
+<meta name="author" content="Masterchessis">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#17181c">
+<link rel="canonical" href="https://masterchessis.netlify.app/">
+
+<!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Masterchessis">
+<meta property="og:title" content="Masterchessis — Échecs en ligne, Puzzles & Apprentissage">
+<meta property="og:description" content="Jouez aux échecs en ligne, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish.">
+<meta property="og:url" content="https://masterchessis.netlify.app/">
+<meta property="og:locale" content="fr_FR">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Masterchessis — Échecs en ligne, Puzzles & Apprentissage">
+<meta name="twitter:description" content="Jouez aux échecs en ligne, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish.">
+
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/board.css">
+
+<!-- Données structurées JSON-LD (schema.org) pour Google -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Masterchessis",
+  "url": "https://masterchessis.netlify.app/",
+  "description": "Jouez aux échecs en ligne, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish.",
+  "inLanguage": "fr-FR",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://masterchessis.netlify.app/#/openings?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<!-- Google Analytics 4 (grâce à gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-L104LCSLGC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-L104LCSLGC');
+</script>
 </head>
 <body>
 <!-- ===================== NAVIGATION ===================== -->
@@ -44,6 +89,26 @@
 <!-- ===================== TOAST / MODALES ===================== -->
 <div id="toastContainer" class="toast-container"></div>
 <div id="modalRoot"></div>
+
+<!-- ===================== CONTENU STATIQUE (SEO / sans JS) =====================
+     Permet à Google et aux moteurs de recherche d'indexer le contenu
+     même sans exécution de JavaScript. -->
+<noscript>
+  <div style="max-width:800px;margin:40px auto;padding:20px;font-family:sans-serif;color:#e5e5e5;background:#202227;border-radius:8px">
+    <h1 style="color:#7bd88f">♞ Masterchessis — Échecs en ligne</h1>
+    <p>Jouez aux échecs en ligne contre l'IA (Stockfish) ou des joueurs réels, entraînez-vous avec des puzzles, apprenez avec des cours interactifs, explorez les ouvertures et analysez vos parties.</p>
+    <h2>Fonctionnalités</h2>
+    <ul>
+      <li>Jouer contre l'IA à 10 niveaux de difficulté</li>
+      <li>Multijoueur en ligne (WebRTC)</li>
+      <li>Entraîneur de puzzles tactiques classés</li>
+      <li>Cours d'échecs progressifs du débutant à l'avancé</li>
+      <li>Explorateur d'ouvertures (Sicilienne, Italienne, Espagnole…)</li>
+      <li>Analyse de parties avec Stockfish</li>
+    </ul>
+    <p><strong>Activez JavaScript</strong> pour profiter de toutes les fonctionnalités interactives.</p>
+  </div>
+</noscript>
 
 <script src="vendor/chess.min.js"></script>
 <script src="js/storage.js"></script>

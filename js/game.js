@@ -392,7 +392,7 @@
       const isLoss = obj.result !== '½-½' && !isWin;
       const isDraw = obj.result === '½-½';
 
-      const s = Storage.getStats();
+const s = Storage.getStats();
       const patch = { games: s.games + 1 };
       if (this.mode === 'ai') {
         if (isWin) patch.aiWins = s.aiWins + 1;
@@ -408,6 +408,21 @@
       else patch.draws = s.draws + 1;
       patch.totalMoves = s.totalMoves + this.moveList.length;
       Storage.updateStats(patch);
+
+      // Statistiques d'activité (visites, parties par mode, coups)
+      Storage.bumpActivity('gamesPlayed');
+      Storage.bumpActivity(this.mode === 'ai' ? 'aiGames' : this.mode === 'online' ? 'onlineGames' : 'localGames');
+      Storage.bumpActivity('movesPlayed');
+      Storage.updateActivity({ movesPlayed: (Storage.getActivity().movesPlayed || 0) + Math.max(0, this.moveList.length - 1) });
+
+      // Mesure GA4 : fin de partie
+      if (window.gtag) {
+        window.gtag('event', 'game_end', {
+          mode: this.mode,
+          result: obj.result,
+          moves: this.moveList.length
+        });
+      }
 
       // Elo
       const elo = Storage.getElo();
