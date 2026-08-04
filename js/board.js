@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — board.js
+   Masterchessis — board.js
    Plateau interactif : rendu 8x8, pièces unicode, coordonnées,
    sélection, mouvements, animation, promotion
    ============================================================ */

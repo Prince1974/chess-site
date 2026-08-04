@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — openings.js
+   Masterchessis — openings.js
    Explorateur d'ouvertures : liste, recherche, détail,
    rejeu des coups sur un mini plateau
    ============================================================ */

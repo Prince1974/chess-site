@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — data/openings.js
+   Masterchessis — data/openings.js
    Ouvertures principales avec ECO, nom, idées, coups
    ============================================================ */
 (function () {

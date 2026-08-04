@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — data/lessons.js
+   Masterchessis — data/lessons.js
    Contenu pédagogique : leçons progressives interactives
    ============================================================ */
 (function () {

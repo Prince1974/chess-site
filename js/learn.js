@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — learn.js
+   Masterchessis — learn.js
    Cours interactifs : liste des leçons, détail, progression,
    mini-plateau pour les exemples
    ============================================================ */

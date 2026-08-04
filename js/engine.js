@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — engine.js
+   Masterchessis — engine.js
    Wrapper chess.js + gestionnaire Worker Stockfish
    Niveaux IA, getBestMove, analyse (score cp / mate)
    ============================================================ */

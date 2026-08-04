@@ -1,4 +1,4 @@
-# ♞ ChessArena — Échecs en ligne & Apprentissage
+# ♞ Masterchessis — Échecs en ligne & Apprentissage
 
 Site d'échecs professionnel 100 % statique : jouez contre Stockfish, en local (2 joueurs) ou en
 multijoueur réel (PeerJS/WebRTC), entraînez-vous avec des puzzles, apprenez avec des cours

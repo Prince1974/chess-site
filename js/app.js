@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — app.js
+   Masterchessis — app.js
    Routing SPA + navigation + rendu des vues
    (Accueil, Jouer, Puzzles, Apprendre, Ouvertures, Analyser, Profil)
    + intégration mode multijoueur réel (PeerJS)
@@ -103,7 +103,7 @@
       hero.className = 'hero';
       hero.innerHTML = `
         <h1>Jouez, apprenez, <span class="text-accent">progressez</span></h1>
-        <p>ChessArena : échecs en ligne contre l'IA ou des joueurs réels, puzzles, cours et analyse par Stockfish.</p>
+<p>Masterchessis : échecs en ligne contre l'IA ou des joueurs réels, puzzles, cours et analyse par Stockfish.</p>
         <div class="hero-btns">
           <button class="btn btn-cta" data-go="play">♟ Jouer maintenant</button>
           <button class="btn" data-go="online">🌐 Multijoueur</button>

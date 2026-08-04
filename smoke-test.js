@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — smoke-test.js
+   Masterchessis — smoke-test.js
    Test DOM headless avec jsdom : charge le site et vérifie
    que chaque vue se rend sans erreur JS.
    Usage : node smoke-test.js

@@ -1,5 +1,5 @@
 # ============================================================
-# ChessArena — Configuration de déploiement Netlify
+# Masterchessis — Configuration de déploiement Netlify
 # Les fichiers vendor/ (chess.js + Stockfish) sont générés,
 # donc on exécute npm install + npm run build avant publication.
 # ============================================================

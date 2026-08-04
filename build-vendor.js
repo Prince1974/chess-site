@@ -6,7 +6,7 @@ const root = __dirname;
 
 // 1. chess.js -> vendor/chess.min.js (expose window.Chess)
 const chessSrc = fs.readFileSync(path.join(root, 'node_modules/chess.js/dist/cjs/chess.js'), 'utf8');
-const wrapper = `/* ChessArena — Bundle UMD chess.js v1.0.0-beta.8 */
+const wrapper = `/* Masterchessis — Bundle UMD chess.js v1.0.0-beta.8 */
 (function () {
   var exports = {};
   var module = { exports: exports };

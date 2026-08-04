@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — storage.js
+   Masterchessis — storage.js
    Gestion des données persistantes (localStorage) :
    profil, elo, stats, historique, progression, préférences
    ============================================================ */
@@ -7,7 +7,7 @@
   'use strict';
 
   const Storage = {
-    prefix: 'chessarena_',
+    prefix: 'masterchessis_',
     version: '1.0.0',
 
     // ---------- Helpers ----------

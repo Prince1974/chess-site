@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — analyze.js
+   Masterchessis — analyze.js
    Analyse Stockfish : barre d'évaluation, meilleur coup,
    lignes principales, navigation par coups
    ============================================================ */

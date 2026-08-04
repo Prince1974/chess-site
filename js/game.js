@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — game.js
+   Masterchessis — game.js
    Modes de jeu : vs IA, hot-seat, en ligne, horloges, liste
    des coups, détection de fin, sauvegarde historique
    ============================================================ */

@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — data/puzzles.js
+   Masterchessis — data/puzzles.js
    Puzzles authentiques classés par difficulté (rating)
    Chaque puzzle : fen initiale, solution (SAN), thème, description
    La solution est en coups complets intercalés (le joueur commence

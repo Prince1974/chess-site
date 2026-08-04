@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — online.js
+   Masterchessis — online.js
    Mode multijoueur réel via PeerJS (WebRTC, broker public)
    - Héberger une partie (hosting) ou rejoindre un code
    - Échange de coups en temps réel, chat simple, resign

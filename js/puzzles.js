@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — puzzles.js
+   Masterchessis — puzzles.js
    Entraîneur de puzzles : sélection, résolution, feedback,
    statistiques, difficulté progressive
    ============================================================ */

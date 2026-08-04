@@ -1,7 +1,7 @@
 {
   "name": "chess-site",
   "version": "1.0.0",
-  "description": "ChessArena — site d'échecs inline, apprentissage et analyse Stockfish",
+  "description": "Masterchessis — site d'échecs inline, apprentissage et analyse Stockfish",
   "main": "index.js",
   "scripts": {
     "build": "node build-vendor.js",

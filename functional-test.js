@@ -1,5 +1,5 @@
 /* ============================================================
-   ChessArena — functional-test.js
+   Masterchessis — functional-test.js
    Test fonctionnel headless : jeux, puzzles, openings, learn.
    Vérifie que la logique métier fonctionne de bout en bout.
    Usage : node functional-test.js
