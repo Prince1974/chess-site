@@ -1,0 +1,64 @@
+﻿ <!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>♞ ChessArena — Échecs Inline & Apprentissage</title>
+<meta name="description" content="Jouez aux échecs en ligne, entraînez-vous avec des puzzles, apprenez avec des cours interactifs et analysez vos parties grâce à Stockfish.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/board.css">
+</head>
+<body>
+<!-- ===================== NAVIGATION ===================== -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand" onclick="app.navigate('home')">
+      <span class="brand-logo">♞</span>
+      <span class="brand-name">Chess<span class="brand-accent">Arena</span></span>
+    </div>
+    <nav class="main-nav" id="mainNav">
+      <button class="nav-btn active" data-route="home">Accueil</button>
+      <button class="nav-btn" data-route="play">Jouer</button>
+      <button class="nav-btn" data-route="puzzles">Puzzles</button>
+      <button class="nav-btn" data-route="learn">Apprendre</button>
+      <button class="nav-btn" data-route="openings">Ouvertures</button>
+      <button class="nav-btn" data-route="analyze">Analyser</button>
+      <button class="nav-btn" data-route="profile">Profil</button>
+    </nav>
+    <div class="header-user">
+      <span class="user-chip" id="userChip" onclick="app.navigate('profile')">
+        <span class="avatar" id="avatarLetter">J</span>
+        <span id="userName">Invité</span>
+      </span>
+      <button class="hamburger" id="hamburger" aria-label="Menu">&#9776;</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<main id="appRoot">
+  <!-- Les vues sont injectées dynamiquement par app.js -->
+</main>
+
+<!-- ===================== TOAST / MODALES ===================== -->
+<div id="toastContainer" class="toast-container"></div>
+<div id="modalRoot"></div>
+
+<script src="vendor/chess.min.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/engine.js"></script>
+<script src="data/puzzles.js"></script>
+<script src="data/openings.js"></script>
+<script src="data/lessons.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/online.js"></script>
+<script src="js/puzzles.js"></script>
+<script src="js/learn.js"></script>
+<script src="js/analyze.js"></script>
+<script src="js/openings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+

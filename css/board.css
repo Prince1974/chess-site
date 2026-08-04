@@ -1,0 +1,110 @@
+/* ============================================================
+   ChessArena — Feuille de style du plateau (complémentaire)
+   ============================================================ */
+
+/* Pièces SVG (unicode) */
+.piece {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(26px, 7vmin, 52px);
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.piece:active { cursor: grabbing; }
+.piece span { transition: transform .12s; display: inline-block; }
+.piece.w span { color: #f8f8f8; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.piece.b span { color: #262626; text-shadow: 0 1px 2px rgba(255,255,255,.15); }
+.square:hover .piece span { transform: scale(1.08); }
+
+/* Hover léger sur case vide jouable */
+.square.hint { box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+
+/* Sélection */
+.square.selected {
+  box-shadow: inset 0 0 0 4px rgba(240,198,116,.95) !important;
+  z-index: 2;
+}
+
+/* Dernier coup */
+.square.last-move-from { background: rgba(255, 218, 100, .45) !important; }
+.square.last-move-to   { background: rgba(255, 218, 100, .6) !important; }
+
+/* Échec */
+.square.check { box-shadow: inset 0 0 0 4px #e04444 !important; }
+
+/* Barre promotion */
+.promo-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(20,21,25,.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 20;
+  border-radius: 4px;
+}
+.promo-btn {
+  font-size: 34px;
+  width: 56px;
+  height: 56px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.promo-btn:hover { border-color: var(--accent); transform: scale(1.1); background: var(--bg-hover); }
+
+/* Bouton rotation */
+.flip-btn {
+  position: absolute;
+  top: -38px;
+  right: 0;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.flip-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+
+/* Son de fin / animation */
+@keyframes popIn { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.piece.move-anim { animation: popIn .18s; }
+
+/* Coordonnées */
+.coord {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 3;
+  text-shadow: 0 0 2px rgba(0,0,0,.7);
+}
+.coord.x { bottom: 3px; right: 5px; }
+.coord.y { top: 3px; left: 5px; }
+.coord.dark-coord { color: #78945c; }
+.coord.light-coord { color: #eef0e0; }
+
+/* Cases attaquées en puzzle (erreur) */
+.square.flash-error { background: rgba(224,93,93,.5) !important; animation: shake .3s; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Empêchement sélection de texte */
+.board-container { -webkit-user-select: none; user-select: none; }

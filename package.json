@@ -1,0 +1,25 @@
+{
+  "name": "chess-site",
+  "version": "1.0.0",
+  "description": "ChessArena — site d'échecs inline, apprentissage et analyse Stockfish",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build-vendor.js",
+    "test": "node test-data.js && node smoke-test.js && node functional-test.js",
+    "test:data": "node test-data.js",
+    "test:smoke": "node smoke-test.js",
+    "test:functional": "node functional-test.js",
+    "serve": "python3 -m http.server 8080"
+  },
+  "keywords": ["chess", "echecs", "stockfish", "puzzles", "apprentissage"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chess.js": "^1.0.0-beta.8",
+    "stockfish.js": "^10.0.2"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

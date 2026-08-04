@@ -1,0 +1,22 @@
+# ============================================================
+# ChessArena — Configuration de déploiement Netlify
+# Les fichiers vendor/ (chess.js + Stockfish) sont générés,
+# donc on exécute npm install + npm run build avant publication.
+# ============================================================
+
+[build]
+  command = "npm install && npm run build"
+  publish = "."
+
+# Redirection SPA : toutes les routes → index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# En-tête pour le Worker/WASM Stockfish
+[[headers]]
+  for = "/vendor/stockfish/*"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Cross-Origin-Opener-Policy = "same-origin"

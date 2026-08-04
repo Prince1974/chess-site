@@ -1,0 +1,10 @@
+# Dépendances
+node_modules/
+
+# Vendor généré (recréé via `npm run build`)
+vendor/chess.min.js
+vendor/stockfish/
+
+# Divers
+.DS_Store
+*.log
