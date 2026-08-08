@@ -2,7 +2,7 @@
   "name": "chess-site",
   "version": "1.0.0",
   "description": "Masterchessis — site d'échecs inline, apprentissage et analyse Stockfish",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "build": "node build-vendor.js",
