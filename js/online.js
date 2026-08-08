@@ -1,43 +1,60 @@
 /* ============================================================
    Masterchessis — online.js
-   Mode multijoueur réel via PeerJS (WebRTC, broker public)
-   - Héberger une partie (hosting) ou rejoindre un code
-   - Échange de coups en temps réel, chat simple, resign
+   Mode multijoueur temps réel : Socket.io avec fallback WebRTC (PeerJS)
+   - Héberger / créer une partie ou rejoindre avec un code
+   - Échange de coups en temps réel, chat, abandon
    ============================================================ */
 (function () {
   'use strict';
 
   const Online = {
+    socket: null,
     peer: null,
     conn: null,
+    mode: 'socket', // 'socket' | 'peer'
     myId: null,
     role: null,        // 'host' | 'guest'
     myColor: null,     // 'w' | 'b'
     opponentName: 'Adversaire',
     opponentRating: '?',
     connected: false,
-    onOpen: null,      // (data) quand connecté au pair
-    onMove: null,      // (moveObj) coup reçu
-    onChat: null,      // (msg)
+    onOpen: null,      // (data)
+    onMove: null,      // (moveObj)
+    onChat: null,      // (text, name)
+    onResign: null,
     onDisconnect: null,
     onError: null,
 
-    peerReady: false,
-    hostResolve: null,
+    getBackendUrl() {
+      const custom = localStorage.getItem('masterchess_backend_url');
+      if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '');
+      if (window.MASTERCHESS_BACKEND) return window.MASTERCHESS_BACKEND.replace(/\/+$/, '');
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:8080';
+      return '';
+    },
 
-    // Chargement dynamique de PeerJS (CDN)
-    loadPeerJS() {
+    loadSocketIo() {
       return new Promise((resolve, reject) => {
-        if (window.Peer) { resolve(window.Peer); return; }
+        if (window.io) return resolve(window.io);
         const s = document.createElement('script');
-        s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-        s.onload = () => resolve(window.Peer);
-        s.onerror = () => reject(new Error('Impossible de charger PeerJS'));
+        s.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+        s.onload = () => resolve(window.io);
+        s.onerror = () => reject(new Error('Socket.io non disponible'));
         document.head.appendChild(s);
       });
     },
 
-    // Génère un id court lisible
+    loadPeerJS() {
+      return new Promise((resolve, reject) => {
+        if (window.Peer) return resolve(window.Peer);
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
+        s.onload = () => resolve(window.Peer);
+        s.onerror = () => reject(new Error('PeerJS non disponible'));
+        document.head.appendChild(s);
+      });
+    },
+
     makeId() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let id = '';
@@ -45,134 +62,208 @@
       return id;
     },
 
-    // Hôte : crée sa Peer, écoute une connexion
+    // Crée une partie en ligne
     async hostGame(opts) {
+      this.disconnect();
+      this.role = 'host';
+      this.myColor = 'w';
+
+      try {
+        await this.loadSocketIo();
+        const baseUrl = this.getBackendUrl();
+        const token = localStorage.getItem('masterchess_jwt') || '';
+
+        const socket = window.io(baseUrl || window.location.origin, {
+          withCredentials: true,
+          auth: { token },
+          timeout: 5000
+        });
+        this.socket = socket;
+        this.mode = 'socket';
+
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.warn('Socket.io timeout, fallback WebRTC PeerJS');
+            socket.disconnect();
+            this.hostGamePeerJS(opts).then(resolve).catch(reject);
+          }, 4000);
+
+          socket.on('connect_error', () => {
+            clearTimeout(timeout);
+            socket.disconnect();
+            this.hostGamePeerJS(opts).then(resolve).catch(reject);
+          });
+
+          socket.on('room_created', ({ code, color }) => {
+            clearTimeout(timeout);
+            this.myId = code;
+            this.myColor = color || 'w';
+            this._setupSocketEvents(socket);
+            resolve(code);
+          });
+
+          socket.emit('create_room');
+        });
+      } catch (err) {
+        return this.hostGamePeerJS(opts);
+      }
+    },
+
+    async hostGamePeerJS(opts) {
       await this.loadPeerJS();
       const PeerCtor = window.Peer;
       const id = (opts && opts.id) || this.makeId();
+      this.mode = 'peer';
       return new Promise((resolve, reject) => {
-        // Si existe déjà, undestroy
-        if (this.peer && !this.peer.destroyed) this.peer.destroy();
-        this.role = 'host';
-        this.myId = id;
         const peer = new PeerCtor(id);
         this.peer = peer;
+        this.myId = id;
 
-        const timeout = setTimeout(() => { reject(new Error('Timeout création de la partie')); }, 20000);
-
-        peer.on('open', (id) => {
-          clearTimeout(timeout);
-          // On ne sait pas encore la couleur : on choisit blanc pour l'hôte par défaut
-          this.myColor = 'w';
-          this.peerReady = true;
-          resolve(id);
-        });
-
+        peer.on('open', (id) => resolve(id));
         peer.on('connection', (conn) => {
-          clearTimeout(timeout);
-          console.log('Connexion entrante', conn.peer);
           this.conn = conn;
-          this._setupConn(conn);
+          this._setupPeerConn(conn);
           conn.on('open', () => {
-            console.log('Lien établi, envoi hello');
-            // On envoie notre identité + la couleur (blanc à l'hôte)
-            conn.send({ type: 'hello', name: Storage.getProfile().name || 'Invité', rating: Storage.getElo().rapid });
+            const prof = Storage ? Storage.getProfile() : { name: 'Invité' };
+            conn.send({ type: 'hello', name: prof.name || 'Invité', rating: 1200 });
           });
         });
-
         peer.on('error', (err) => {
-          clearTimeout(timeout);
-          console.error('Peer error', err);
           if (this.onError) this.onError(err);
           reject(err);
         });
       });
     },
 
-    // Invité : se connecte à un id hôte
+    // Rejoindre une partie
     async joinGame(code, opts) {
+      this.disconnect();
+      this.role = 'guest';
+      this.myColor = 'b';
+      const cleanCode = (code || '').trim().toUpperCase();
+
+      try {
+        await this.loadSocketIo();
+        const baseUrl = this.getBackendUrl();
+        const token = localStorage.getItem('masterchess_jwt') || '';
+
+        const socket = window.io(baseUrl || window.location.origin, {
+          withCredentials: true,
+          auth: { token },
+          timeout: 5000
+        });
+        this.socket = socket;
+        this.mode = 'socket';
+
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            socket.disconnect();
+            this.joinGamePeerJS(cleanCode, opts).then(resolve).catch(reject);
+          }, 4000);
+
+          socket.on('connect_error', () => {
+            clearTimeout(timeout);
+            socket.disconnect();
+            this.joinGamePeerJS(cleanCode, opts).then(resolve).catch(reject);
+          });
+
+          socket.on('room_joined', ({ code, color, opponent }) => {
+            clearTimeout(timeout);
+            this.myId = code;
+            this.myColor = color || 'b';
+            this.opponentName = opponent || 'Adversaire';
+            this.connected = true;
+            this._setupSocketEvents(socket);
+            if (this.onOpen) this.onOpen({ opponent: this.opponentName, rating: '?', color: this.myColor });
+            resolve(code);
+          });
+
+          socket.on('room_error', ({ message }) => {
+            clearTimeout(timeout);
+            reject(new Error(message || 'Impossible de rejoindre'));
+          });
+
+          socket.emit('join_room', { code: cleanCode });
+        });
+      } catch (err) {
+        return this.joinGamePeerJS(cleanCode, opts);
+      }
+    },
+
+    async joinGamePeerJS(code, opts) {
       await this.loadPeerJS();
       const PeerCtor = window.Peer;
-      const hostId = code.trim().toUpperCase();
+      this.mode = 'peer';
       return new Promise((resolve, reject) => {
-        if (this.peer && !this.peer.destroyed) this.peer.destroy();
-        this.role = 'guest';
-        const peer = new PeerCtor(); // id aléatoire
+        const peer = new PeerCtor();
         this.peer = peer;
 
-        const timeout = setTimeout(() => { reject(new Error('Timeout connexion')); }, 20000);
-
         peer.on('open', (id) => {
-          this.myId = id;
-          this.myColor = 'b'; // l'invité joue noir
-          const conn = peer.connect(hostId, { reliable: true });
+          const conn = peer.connect(code, { reliable: true });
           this.conn = conn;
-          this._setupConn(conn);
+          this._setupPeerConn(conn);
           conn.on('open', () => {
-            conn.send({ type: 'hello', name: Storage.getProfile().name || 'Invité', rating: Storage.getElo().rapid });
+            const prof = Storage ? Storage.getProfile() : { name: 'Invité' };
+            conn.send({ type: 'hello', name: prof.name || 'Invité', rating: 1200 });
           });
-          // La connexion sera confirmée quand on reçoit le hello de l'hôte
-          resolve(hostId);
+          resolve(code);
         });
-
-        peer.on('error', (err) => {
-          clearTimeout(timeout);
-          console.error('Peer error', err);
-          if (this.onError) this.onError(err);
-          reject(err);
-        });
+        peer.on('error', (err) => reject(err));
       });
     },
 
-    _setupConn(conn) {
+    _setupSocketEvents(socket) {
+      socket.on('opponent_joined', ({ username }) => {
+        this.connected = true;
+        this.opponentName = username || 'Adversaire';
+        if (this.onOpen) this.onOpen({ opponent: this.opponentName, rating: '?', color: this.myColor });
+      });
+
+      socket.on('move_made', ({ from, to, san }) => {
+        if (this.onMove) this.onMove({ from, to, san });
+      });
+
+      socket.on('chat', ({ username, text }) => {
+        if (this.onChat) this.onChat(text, username);
+      });
+
+      socket.on('opponent_resigned', () => {
+        if (this.onResign) this.onResign();
+      });
+
+      socket.on('opponent_left', () => {
+        this.connected = false;
+        if (this.onDisconnect) this.onDisconnect();
+      });
+    },
+
+    _setupPeerConn(conn) {
       conn.on('data', (data) => {
-        this._handleData(data);
+        if (!data) return;
+        if (data.type === 'hello') {
+          this.connected = true;
+          this.opponentName = data.name || 'Adversaire';
+          if (this.onOpen) this.onOpen({ opponent: this.opponentName, rating: data.rating, color: this.myColor });
+        } else if (data.type === 'move') {
+          if (this.onMove) this.onMove(data.move);
+        } else if (data.type === 'chat') {
+          if (this.onChat) this.onChat(data.text, data.name);
+        } else if (data.type === 'resign') {
+          if (this.onResign) this.onResign();
+        }
       });
       conn.on('close', () => {
         this.connected = false;
         if (this.onDisconnect) this.onDisconnect();
       });
-      conn.on('error', (err) => {
-        console.error('conn error', err);
-        if (this.onError) this.onError(err);
-      });
-    },
-
-    _handleData(data) {
-      if (!data || typeof data !== 'object') return;
-
-      switch (data.type) {
-        case 'hello':
-          if (!this.connected) {
-            this.connected = true;
-            this.opponentName = data.name || 'Adversaire';
-            this.opponentRating = data.rating != null ? data.rating : '?';
-            // L'hôte est blanc, l'invité noir — confirmé aux deux
-            if (this.role === 'host') this.myColor = 'w';
-            else this.myColor = 'b';
-            if (this.onOpen) this.onOpen({ opponent: this.opponentName, rating: this.opponentRating, color: this.myColor });
-          }
-          break;
-        case 'move':
-          if (this.onMove) this.onMove(data.move);
-          break;
-        case 'chat':
-          if (this.onChat) this.onChat(data.text, data.name);
-          break;
-        case 'resign':
-          if (this.onResign) this.onResign();
-          break;
-        case 'offerDraw':
-          if (this.onDrawOffer) this.onDrawOffer();
-          break;
-        case 'drawAccepted':
-          if (this.onDrawAccepted) this.onDrawAccepted();
-          break;
-      }
     },
 
     sendMove(moveObj) {
-      if (this.conn && this.connected) {
+      if (this.mode === 'socket' && this.socket && this.myId) {
+        this.socket.emit('move', { code: this.myId, from: moveObj.from, to: moveObj.to, promotion: moveObj.promotion || 'q' });
+        return true;
+      }
+      if (this.mode === 'peer' && this.conn && this.connected) {
         this.conn.send({ type: 'move', move: { from: moveObj.from, to: moveObj.to, promotion: moveObj.promotion || 'q', san: moveObj.san } });
         return true;
       }
@@ -180,35 +271,37 @@
     },
 
     sendChat(text) {
-      if (this.conn && this.connected) {
-        this.conn.send({ type: 'chat', text, name: Storage.getProfile().name || 'Invité' });
+      if (this.mode === 'socket' && this.socket && this.myId) {
+        this.socket.emit('chat', { code: this.myId, text });
+        return true;
+      }
+      if (this.mode === 'peer' && this.conn && this.connected) {
+        const prof = Storage ? Storage.getProfile() : { name: 'Invité' };
+        this.conn.send({ type: 'chat', text, name: prof.name || 'Invité' });
         return true;
       }
       return false;
     },
 
     sendResign() {
-      if (this.conn && this.connected) this.conn.send({ type: 'resign' });
-    },
-
-    sendDrawOffer() {
-      if (this.conn && this.connected) this.conn.send({ type: 'offerDraw' });
-    },
-
-    sendDrawAccept() {
-      if (this.conn && this.connected) this.conn.send({ type: 'drawAccepted' });
+      if (this.mode === 'socket' && this.socket && this.myId) {
+        this.socket.emit('resign', { code: this.myId });
+      }
+      if (this.mode === 'peer' && this.conn && this.connected) {
+        this.conn.send({ type: 'resign' });
+      }
     },
 
     disconnect() {
       try {
+        if (this.socket) this.socket.disconnect();
         if (this.conn) this.conn.close();
         if (this.peer) this.peer.destroy();
       } catch (e) {}
-      this.connected = false;
+      this.socket = null;
       this.conn = null;
       this.peer = null;
-      this.myColor = null;
-      this.role = null;
+      this.connected = false;
     }
   };
 

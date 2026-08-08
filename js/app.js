@@ -496,7 +496,7 @@ navigate(route) {
     },
 
     // ===================== PROFIL =====================
-renderProfile(sec) {
+    renderProfile(sec) {
       sec.innerHTML = '';
       const p = Storage.getProfile();
       const stats = Storage.getStats();
@@ -504,13 +504,16 @@ renderProfile(sec) {
       const history = Storage.getHistory();
       const act = Storage.getActivity();
 
+      const backendUrl = Online ? Online.getBackendUrl() : '';
+      const jwtToken = localStorage.getItem('masterchess_jwt');
+
       // Header
       const header = document.createElement('div');
       header.className = 'profile-header';
       header.innerHTML = `
         <div class="profile-avatar">${(p.avatar || p.name || 'J').charAt(0).toUpperCase()}</div>
         <div class="profile-name">
-          <h2>${p.name || 'Invité'}</h2>
+          <h2>${p.name || 'Invité'} ${jwtToken ? '<span class="badge badge-green">Compte Connecté</span>' : ''}</h2>
           <div class="profile-elo">
             <span class="badge badge-green">Rapide ${elo.rapid}</span>
             <span class="badge badge-blue">Blitz ${elo.blitz}</span>
@@ -520,15 +523,142 @@ renderProfile(sec) {
       `;
       sec.appendChild(header);
 
+      // Auth Account Card
+      const authCard = document.createElement('div');
+      authCard.className = 'card mb-20';
+      if (jwtToken && p.username) {
+        authCard.innerHTML = `
+          <h3 class="mb-10">👤 Compte en Ligne</h3>
+          <p>Connecté en tant que <b>${p.username}</b></p>
+          <button class="btn btn-danger btn-sm mt-10" id="btnLogoutAcc">Se Déconnecter</button>
+        `;
+        authCard.querySelector('#btnLogoutAcc').addEventListener('click', async () => {
+          try { await fetch((backendUrl || '') + '/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+          localStorage.removeItem('masterchess_jwt');
+          Storage.updateProfile({ name: 'Invité', username: null });
+          ChessUI.toast('Déconnecté', 'info');
+          this.renderProfile(sec);
+          this._updateUserChip();
+        });
+      } else {
+        authCard.innerHTML = `
+          <h3 class="mb-10">🔐 Connexion & Inscription</h3>
+          <p class="text-muted mb-10">Connectez-vous pour conserver votre classement Elo et votre historique sur le serveur.</p>
+          <div class="grid grid-2 gap-10">
+            <input class="input" id="authUsernameInput" placeholder="Nom d'utilisateur">
+            <input class="input" type="password" id="authPasswordInput" placeholder="Mot de passe">
+          </div>
+          <div class="flex gap-10 mt-10">
+            <button class="btn btn-primary" id="btnLoginAcc">Se Connecter</button>
+            <button class="btn" id="btnRegisterAcc">S'inscrire</button>
+          </div>
+          <div id="authMsg" class="mt-10 text-muted" style="font-size:12px"></div>
+        `;
+        const doAuth = async (action) => {
+          const u = authCard.querySelector('#authUsernameInput').value.trim();
+          const pass = authCard.querySelector('#authPasswordInput').value;
+          const msgEl = authCard.querySelector('#authMsg');
+          msgEl.textContent = 'Connexion...';
+          try {
+            const res = await fetch((backendUrl || '') + '/api/' + action, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ username: u, password: pass })
+            });
+            const data = await res.json();
+            if (!res.ok) { msgEl.textContent = data.error || 'Erreur.'; return; }
+            if (data.token) localStorage.setItem('masterchess_jwt', data.token);
+            Storage.updateProfile({ name: data.user.username, username: data.user.username, avatar: data.user.username.charAt(0) });
+            ChessUI.toast('Bienvenue, ' + data.user.username + ' !', 'success');
+            this.renderProfile(sec);
+            this._updateUserChip();
+          } catch(e) {
+            msgEl.textContent = 'Impossible de contacter le serveur backend. Vérifiez l\'URL du serveur.';
+          }
+        };
+        authCard.querySelector('#btnLoginAcc').addEventListener('click', () => doAuth('login'));
+        authCard.querySelector('#btnRegisterAcc').addEventListener('click', () => doAuth('register'));
+      }
+      sec.appendChild(authCard);
+
+      // Leaderboard Card
+      const lbCard = document.createElement('div');
+      lbCard.className = 'card mb-20';
+      lbCard.innerHTML = `
+        <h3 class="mb-10">🏆 Classement Général</h3>
+        <div id="leaderboardContent" class="text-muted">Chargement du classement...</div>
+      `;
+      sec.appendChild(lbCard);
+
+      // Charger le classement depuis l'API
+      if (typeof fetch !== 'undefined') {
+        fetch((backendUrl || '') + '/api/leaderboard', { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => {
+            const lbEl = lbCard.querySelector('#leaderboardContent');
+            if (data.leaderboard && data.leaderboard.length) {
+              lbEl.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                  <thead>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);text-align:left">
+                      <th style="padding:6px">#</th>
+                      <th style="padding:6px">Joueur</th>
+                      <th style="padding:6px">Elo</th>
+                      <th style="padding:6px">V/D/N</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${data.leaderboard.map((row, idx) => `
+                      <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <td style="padding:6px;color:var(--gold)">${idx + 1}</td>
+                        <td style="padding:6px;font-weight:bold">${row.username}</td>
+                        <td style="padding:6px;color:var(--accent)">${row.rating}</td>
+                        <td style="padding:6px;color:var(--muted)">${row.wins || 0}W / ${row.losses || 0}L</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `;
+            } else {
+              lbEl.textContent = 'Aucun classement disponible pour l\'instant.';
+            }
+          }).catch(() => {
+            lbCard.querySelector('#leaderboardContent').textContent = 'Serveur backend non connecté. (Utilisez le mode local ou configurez l\'URL du serveur ci-dessous).';
+          });
+      } else {
+        lbCard.querySelector('#leaderboardContent').textContent = 'Mode hors-ligne';
+      }
+
       // Stats grid
       const grid = document.createElement('div');
       grid.className = 'grid grid-3 mb-20';
       grid.innerHTML = `
         <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--accent)">${stats.wins}</div><div class="stat-label text-muted">Victoires</div></div>
         <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--danger)">${stats.losses}</div><div class="stat-label text-muted">Défaites</div></div>
-<div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--gold)">${stats.draws}</div><div class="stat-label text-muted">Nulles</div></div>
+        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--gold)">${stats.draws}</div><div class="stat-label text-muted">Nulles</div></div>
       `;
       sec.appendChild(grid);
+
+      // Config Serveur Backend
+      const cfgCard = document.createElement('div');
+      cfgCard.className = 'card mb-20';
+      cfgCard.innerHTML = `
+        <h3 class="mb-10">🌐 Serveur Backend (pour Netlify / Distant)</h3>
+        <p class="text-muted mb-10" style="font-size:12px">Indiquez l'URL de votre backend Node.js (ex: <code>https://garichess-backend.onrender.com</code>) pour connecter le multijoueur en ligne et la base de données.</p>
+        <div class="flex gap-8">
+          <input class="input flex-1" id="backendUrlInput" value="${localStorage.getItem('masterchess_backend_url') || ''}" placeholder="https://garichess-backend.onrender.com">
+          <button class="btn btn-primary" id="saveBackendUrl">Enregistrer URL</button>
+        </div>
+      `;
+      sec.appendChild(cfgCard);
+
+      cfgCard.querySelector('#saveBackendUrl').addEventListener('click', () => {
+        const val = cfgCard.querySelector('#backendUrlInput').value.trim();
+        localStorage.setItem('masterchess_backend_url', val);
+        ChessUI.toast('URL Backend mise à jour', 'success');
+        this.renderProfile(sec);
+      });
 
       // Détail des statistiques d'activité
       const fmtTime = (sec) => {

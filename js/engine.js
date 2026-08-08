@@ -1,10 +1,63 @@
 /* ============================================================
    Masterchessis — engine.js
-   Wrapper chess.js + gestionnaire Worker Stockfish
-   Niveaux IA, getBestMove, analyse (score cp / mate)
+   Wrapper chess.js + gestionnaire Worker Stockfish + Minimax Backup
+   Niveaux IA, getBestMove avec secours automatique anti-freeze
    ============================================================ */
 (function () {
   'use strict';
+
+  const VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+  const PST_PAWN = [0,0,0,0,0,0,0,0, 5,5,5,5,5,5,5,5, 1,1,2,3,3,2,1,1, 0.5,0.5,1,2.5,2.5,1,0.5,0.5, 0,0,0,2,2,0,0,0, 0.5,-0.5,-1,0,0,-1,-0.5,0.5, 0.5,1,1,-2,-2,1,1,0.5, 0,0,0,0,0,0,0,0];
+
+  function evaluatePos(g) {
+    const b = g.board(); let score = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let f = 0; f < 8; f++) {
+        const c = b[r][f]; if (!c) continue;
+        let v = VALUES[c.type] * 10;
+        if (c.type === 'p') { const idx = c.color === 'w' ? r * 8 + f : (7 - r) * 8 + f; v += PST_PAWN[idx]; }
+        score += (c.color === 'w') ? v : -v;
+      }
+    }
+    if (g.in_checkmate()) score += (g.turn() === 'w' ? -10000 : 10000);
+    return score;
+  }
+
+  function minimaxFallback(g, depth, alpha, beta, maximizing) {
+    if (depth === 0 || g.game_over()) return evaluatePos(g);
+    const moves = g.moves();
+    if (maximizing) {
+      let best = -Infinity;
+      for (const m of moves) { g.move(m); best = Math.max(best, minimaxFallback(g, depth - 1, alpha, beta, false)); g.undo(); alpha = Math.max(alpha, best); if (beta <= alpha) break; }
+      return best;
+    } else {
+      let best = Infinity;
+      for (const m of moves) { g.move(m); best = Math.min(best, minimaxFallback(g, depth - 1, alpha, beta, true)); g.undo(); beta = Math.min(beta, best); if (beta <= alpha) break; }
+      return best;
+    }
+  }
+
+  function getMinimaxMove(fen, depth) {
+    try {
+      const g = new Chess(fen);
+      const moves = g.moves({ verbose: true });
+      if (!moves || !moves.length) return null;
+      const maximizing = g.turn() === 'w';
+      let bestScore = maximizing ? -Infinity : Infinity;
+      let bestMoves = [];
+      for (const m of moves) {
+        g.move(m.san);
+        const sc = minimaxFallback(g, Math.max(0, depth - 1), -Infinity, Infinity, !maximizing);
+        g.undo();
+        if (maximizing ? sc > bestScore : sc < bestScore) { bestScore = sc; bestMoves = [m]; }
+        else if (sc === bestScore) bestMoves.push(m);
+      }
+      const chosen = bestMoves.length ? bestMoves[Math.floor(Math.random() * bestMoves.length)] : moves[0];
+      return chosen ? (chosen.from + chosen.to + (chosen.promotion || '')) : null;
+    } catch (e) {
+      return null;
+    }
+  }
 
   const Engine = {
     chess: null,
@@ -14,7 +67,6 @@
     currentCallback: null,
     analyzing: false,
 
-    // ---------- chess.js ----------
     init() {
       this.chess = new Chess();
       return this.chess;
@@ -28,7 +80,6 @@
       return this.chess;
     },
 
-    // ---------- Stockfish Worker ----------
     initWorker() {
       if (this.worker) return this.worker;
       try {
@@ -41,10 +92,10 @@
         this.worker.addEventListener('message', (e) => this.onWorkerMessage(e));
         this.worker.postMessage('uci');
         this.worker.postMessage('setoption name Threads value 1');
-        this.worker.postMessage('setoption name Hash value 32');
+        this.worker.postMessage('setoption name Hash value 16');
         return this.worker;
       } catch (err) {
-        console.error('Stockfish init error:', err);
+        console.warn('Stockfish init warning:', err);
         return null;
       }
     },
@@ -102,26 +153,44 @@
       return info;
     },
 
-    // Coup le plus fort via Stockfish (optionnel avec randomisation selon niveau)
+    // Coup IA sécurisé avec timeout et fallback Minimax
     getBestMove(fen, opts) {
       return new Promise((resolve) => {
+        let isResolved = false;
+        const level = (opts && opts.level != null) ? opts.level : 5;
+
+        const safeResolve = (move) => {
+          if (!isResolved) {
+            isResolved = true;
+            if (timer) clearTimeout(timer);
+            resolve(move);
+          }
+        };
+
+        // Fallback immédiat si pas de worker
         const worker = this.initWorker();
         if (!worker) {
-          // Fallback : premier coup légal aléatoire
-          try {
-            const c = new Chess(fen);
-            const moves = c.moves();
-            resolve(moves.length ? moves[Math.floor(Math.random() * moves.length)] : null);
-          } catch (e) { resolve(null); }
+          setTimeout(() => {
+            const fallbackMove = getMinimaxMove(fen, Math.min(2, Math.ceil(level / 3)));
+            safeResolve(fallbackMove);
+          }, 50);
           return;
         }
 
-        const level = (opts && opts.level != null) ? opts.level : 5;
-        const depth = Math.max(1, Math.min(18, Math.round(level * 1.2 + 2)));
+        // Timeout de sécurité 2500ms
+        const timer = setTimeout(() => {
+          if (!isResolved) {
+            console.warn('Stockfish timeout, utilisation du moteur Minimax de secours');
+            const fallbackMove = getMinimaxMove(fen, Math.min(2, Math.ceil(level / 3)));
+            safeResolve(fallbackMove);
+          }
+        }, 2500);
+
+        const depth = Math.max(1, Math.min(12, Math.round(level * 1.0 + 1)));
 
         this.currentCallback = {
           onInfo: (opts && opts.onInfo) ? opts.onInfo : null,
-          onMove: (move) => resolve(move)
+          onMove: (move) => safeResolve(move)
         };
 
         this.workerSend('position fen ' + fen);
@@ -129,12 +198,11 @@
       });
     },
 
-    // Analyse complète d'une position
     analyze(fen, opts) {
       return new Promise((resolve) => {
         const worker = this.initWorker();
         if (!worker) { resolve(null); return; }
-        const depth = (opts && opts.depth) || 12;
+        const depth = (opts && opts.depth) || 10;
 
         const self = this;
         this.currentCallback = {
@@ -153,28 +221,12 @@
       });
     },
 
-    // Convertir score interne en texte lisible
     formatScore(info) {
       if (!info) return null;
       if (info.scoreKind === 'mate') {
         return info.score > 0 ? '#' + info.score : '#' + Math.abs(info.score);
       }
       return (info.score / 100).toFixed(1);
-    },
-
-    // Analyse séquentielle de plusieurs FEN
-    analyzePgn(fenList, opts) {
-      const results = [];
-      let i = 0;
-      const next = () => {
-        if (i >= fenList.length) { opts.onDone && opts.onDone(results); return; }
-        const fen = fenList[i++];
-        this.analyze(fen, { depth: opts.depth || 10, onInfo: opts.onInfo }).then((res) => {
-          results.push(Object.assign({ fen }, res));
-          next();
-        });
-      };
-      next();
     }
   };
 
