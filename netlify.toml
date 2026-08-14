@@ -1,7 +1,5 @@
 # ============================================================
 # Masterchessis — Configuration de déploiement Netlify
-# Les fichiers vendor/ (chess.js + Stockfish) sont générés,
-# donc on exécute npm install + npm run build avant publication.
 # ============================================================
 
 [build]
@@ -14,9 +12,20 @@
   to = "/index.html"
   status = 200
 
-# En-tête pour le Worker/WASM Stockfish
+# En-têtes pour le Worker/WASM Stockfish (Cross-Origin isolation)
 [[headers]]
-  for = "/vendor/stockfish/*"
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+# MIME types spécifiques pour WASM si nécessaire
+[[headers]]
+  for = "/vendor/stockfish/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/vendor/stockfish/*.js"
   [headers.values]
     Content-Type = "application/javascript"
-    Cross-Origin-Opener-Policy = "same-origin"
