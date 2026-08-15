@@ -1,164 +1,245 @@
 /* ============================================================
    Masterchessis — data/lessons.js
-   Contenu pédagogique : leçons progressives interactives
+   Cours d'échecs interactifs progressifs (Style Chess.com)
+   Chaque leçon comporte un parcours interactif étape par étape avec
+   des défis sur l'échiquier, dialogue de coach, indices et récompenses XP.
    ============================================================ */
 (function () {
   'use strict';
 
   const LESSONS = [
     {
-      id: 1, icon: '♟', level: 'Débutant', title: 'Le plateau et les pièces',
-      estTime: 5, category: 'Bases',
-      sections: [
+      id: 1, icon: '♟', level: 'Débutant', title: 'Le déplacement des pièces',
+      estTime: 5, category: 'Bases', xp: 50, badge: '♟ Pionnier',
+      summary: 'Apprenez comment chaque pièce se déplace et capture sur l\'échiquier.',
+      steps: [
         {
-          h: 'Le plateau',
-          p: 'L\'échiquier est composé de 64 cases alternant clair et foncé. Les colonnes (fichiers) vont de a à h, les rangées (rangées) de 1 à 8. Les Blancs jouent toujours en premier, et la dame blanche commence sur une case blanche (d1), la dame noire sur une case noire (d8).'
+          title: '1. Avancer le pion central',
+          coach: 'Le pion avance de 2 cases depuis sa position initiale. Jouez votre pion roi en e4 !',
+          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          turn: 'w',
+          solution: ['e4'],
+          hint: 'Cliquez sur le pion e2 et jouez-le en e4.',
+          successMsg: 'Parfait ! En e4, votre pion contrôle le centre et libère la dame et le fou.'
         },
         {
-          h: 'Les pièces',
-          p: 'Chaque camp a 8 pions, 2 tours, 2 cavaliers, 2 fous, 1 dame et 1 roi. Le but est de mater le roi adverse : le mettre en échec de façon inévitable.',
-          list: [
-            '♙ Pion : avance d\'une case (2 depuis sa case de départ), capture en diagonale.',
-            '♘ Cavalier : se déplace en « L », saute par-dessus les pièces.',
-            '♗ Fou : se déplace en diagonale, reste sur sa couleur.',
-            '♖ Tour : se déplace horizontalement et verticalement.',
-            '♕ Dame : combine tour et fou, la pièce la plus puissante.',
-            '♔ Roi : une case dans toutes les directions, indispensable à protéger.'
-          ]
+          title: '2. Développer le cavalier en sautant',
+          coach: 'Le cavalier est la seule pièce qui peut sauter par-dessus les autres en forme de L. Amenez le cavalier en f3 !',
+          fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
+          turn: 'w',
+          solution: ['Nf3'],
+          hint: 'Jouez le cavalier de g1 vers f3.',
+          successMsg: 'Superbe ! En f3, le cavalier attaque le centre et prépare la mise en sécurité du roi.'
+        },
+        {
+          title: '3. Activer le fou sur la grande diagonale',
+          coach: 'Le fou se déplace en diagonale. Placez votre fou en c4 pour viser le point faible f7 !',
+          fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+          turn: 'w',
+          solution: ['Bc4'],
+          hint: 'Déplacez le fou de f1 vers c4.',
+          successMsg: 'Excellent ! Le fou contrôle une diagonale majeure et met la pression sur l\'adversaire.'
         }
+      ],
+      sections: [
+        { h: 'Le plateau', p: 'L\'échiquier est composé de 64 cases alternant clair et foncé. Les Blancs commencent toujours.' },
+        { h: 'Les pièces', list: ['Pion : avance de 1 ou 2 cases', 'Cavalier : saut en L', 'Fou : diagonales', 'Tour : lignes et colonnes', 'Dame : toute direction', 'Roi : 1 case'] }
       ]
     },
     {
-      id: 2, icon: '♘', level: 'Débutant', title: 'Les règles essentielles',
-      estTime: 8, category: 'Bases',
-      sections: [
+      id: 2, icon: '🏰', level: 'Débutant', title: 'Le roque et la sécurité du roi',
+      estTime: 6, category: 'Bases', xp: 60, badge: '🏰 Roi Protégé',
+      summary: 'Mettez votre roi à l\'abri et connectez vos tours grâce au roque.',
+      steps: [
         {
-          h: 'Le roque',
-          p: 'Le roque est le seul coup où le roi et une tour bougent en même temps. Le roi fait deux pas vers la tour, la tour passe par-dessus le roi. Il n\'est possible que si : ni le roi ni la tour n\'ont bougé, aucune pièce entre eux, le roi n\'est pas en échec, et il ne traverse aucune case attaquée.'
+          title: '1. Exécuter le petit roque (O-O)',
+          coach: 'Toutes les pièces entre le roi et la tour ont bougé. Effectuez le petit roque pour abriter votre roi !',
+          fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
+          turn: 'w',
+          solution: ['O-O'],
+          hint: 'Déplacez le roi de e1 vers g1 (le roque se fera automatiquement).',
+          successMsg: 'Brillant ! Votre roi est en sécurité derrière un rempart de trois pions et la tour s\'active.'
         },
         {
-          h: 'Prise en passant',
-          p: 'Si un pion avance de deux cases et atterrit à côté d\'un pion adverse, celui-ci peut le capturer « en passant » comme s\'il n\'avait avancé que d\'une case. C\'est un coup spécial à connaître.'
-        },
-        {
-          h: 'Promotion',
-          p: 'Quand un pion atteint la dernière rangée, il se transforme en dame, tour, fou ou cavalier (souvent en dame). Un pion promu change immédiatement tout le rapport de force.'
+          title: '2. Bloquer un échec au roi',
+          coach: 'Les Noirs vous mettent en échec avec le fou en b4. Interposez votre pion en c3 pour le bloquer !',
+          fen: 'r1bqk1nr/pppp1ppp/2n5/4p3/1bB1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4',
+          turn: 'w',
+          solution: ['c3'],
+          hint: 'Avancez le pion c2 en c3.',
+          successMsg: 'Impeccable ! L\'échec est paré et le fou adverse est maintenant forcé de battre en retraite.'
         }
+      ],
+      sections: [
+        { h: 'Conditions du roque', p: 'Ni le roi ni la tour ne doivent avoir bougé. Aucune case traversée ne doit être attaquée.' }
       ]
     },
     {
-      id: 3, icon: '♛', level: 'Débutant', title: 'Mater le roi',
-      estTime: 7, category: 'Finales',
-      sections: [
+      id: 3, icon: '👑', level: 'Débutant', title: 'Le mat du berger et défense',
+      estTime: 7, category: 'Tactique', xp: 75, badge: '⚡ Maître du Mat',
+      summary: 'Comprenez l\'attaque rapide sur f7 et apprenez à la contrer sans paniquer.',
+      steps: [
         {
-          h: 'Échec et mat',
-          p: 'On dit qu\'un roi est en échec quand il est attaqué. Le joueur en échec DOIT répondre : déplacer le roi, capturer la pièce attaquante, ou interposer une pièce. S\'il n\'y a aucune parade, c\'est ÉCHEC ET MAT, et la partie est gagnée.'
+          title: '1. Porter l\'estocade du mat du berger',
+          coach: 'La dame et le fou ciblent tous deux la case f7 non défendue. Capturez f7 pour mater !',
+          fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 4 4',
+          turn: 'w',
+          solution: ['Qxf7#'],
+          hint: 'Prenez le pion f7 avec votre dame.',
+          successMsg: 'Échec et mat ! C\'est le mat du berger en 4 coups. Mémorable mais facile à parer !'
         },
         {
-          h: 'Mat du berger',
-          p: 'La dame et le fou attaquent f7 au quatrième coup : 1.e4 e5 2.Bc4 Nc6 3.Qh5 Nf6 4.Qxf7#. C\'est le mat le plus rapide, à ne jamais laisser passer !',
-          moves: ['e4', 'e5', 'Bc4', 'Nc6', 'Qh5', 'Nf6', 'Qxf7#']
-        },
-        {
-          h: 'Mat de l\'escalier',
-          p: 'Avec une dame et une tour, on réduit progressivement le roi adverse case après case, comme des barreaux d\'échelle, jusqu\'au mat sur le bord.'
+          title: '2. Parer l\'attaque sur f7',
+          coach: 'Les Blancs menacent Qxf7#. Jouez votre dame en e7 pour protéger le pion et défendre solidement !',
+          fen: 'r1bqkb1r/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',
+          turn: 'b',
+          solution: ['Qe7'],
+          hint: 'Déplacez la dame noire de d8 vers e7.',
+          successMsg: 'Très bien défendu ! Le pion f7 est surprotégé et l\'offensive blanche est neutralisée.'
         }
+      ],
+      sections: [
+        { h: 'Mat du berger', p: 'Une menace courante chez les débutants à connaître impérativement.', moves: ['e4', 'e5', 'Bc4', 'Nc6', 'Qh5', 'Nf6', 'Qxf7#'] }
       ]
     },
     {
-      id: 4, icon: '⚔', level: 'Intermédiaire', title: 'Ouverture : principes',
-      estTime: 8, category: 'Ouverture',
-      sections: [
+      id: 4, icon: '🍴', level: 'Intermédiaire', title: 'La fourchette royale',
+      estTime: 8, category: 'Tactique', xp: 85, badge: '🍴 Tacticien Fourchette',
+      summary: 'Attaquez deux pièces majeures simultanément avec le cavalier.',
+      steps: [
         {
-          h: 'Les 3 règles d\'or',
-          p: 'En ouverture, suivez ces trois principes : contrôlez le centre (e4, d4, e5, d5), développez vos pièces légères (cavaliers puis fous), et mettez votre roi en sécurité par le roque. Ne jouez pas la dame trop tôt, et n\'avancez pas trop de pions sans nécessité.'
+          title: '1. Fourchette Roi & Dame',
+          coach: 'Trouvez la case où votre cavalier attaque à la fois le roi noir et la dame en c7 !',
+          fen: 'r3kb1r/ppq2ppp/2n1pn2/3p4/3P4/2N2N2/PPP2PPP/R1BQR1K1 w kq - 0 9',
+          turn: 'w',
+          solution: ['Nb5'],
+          hint: 'Sautez avec le cavalier de c3 vers b5.',
+          successMsg: 'Magnifique ! Le cavalier attaque la dame en c7 et menace de sauter en c7 avec échec royal.'
         },
         {
-          h: 'Le développement',
-          p: 'Un développement idéal : deux pions centraux, deux cavaliers, deux fous, roque court. Chaque pièce doit avoir un rôle. Évitez de sortir deux fois la même pièce dans les 10 premiers coups.'
-        },
-        {
-          h: 'Les erreurs fréquentes',
-          list: [
-            'Sacrifier du matériel sans compensation.',
-            'Laisser son roi au centre pendant que les lignes s\'ouvrent.',
-            'Bloquer ses propres pièces avec ses pions.',
-            'Négliger la sécurité du roi pour attaquer trop tôt.'
-          ]
+          title: '2. Gagner la dame par fourchette',
+          coach: 'Le roi et la dame noirs sont alignés sur les sauts de cavalier. Capturez la tour en a8 !',
+          fen: 'r1b1k2r/ppN2ppp/4pn2/3p4/1b1P4/5N2/PPP2PPP/R1BQR1K1 w kq - 0 10',
+          turn: 'w',
+          solution: ['Nxa8'],
+          hint: 'Capturez la tour en a8 avec le cavalier.',
+          successMsg: 'Victoire matérielle décisive ! Vous avez gagné une tour nette.'
         }
+      ],
+      sections: [
+        { h: 'Principe de la fourchette', p: 'Une pièce attaque deux cibles non protégées ou de valeur supérieure.' }
       ]
     },
     {
-      id: 5, icon: '💡', level: 'Intermédiaire', title: 'Les motifs tactiques 1',
-      estTime: 9, category: 'Tactique',
-      sections: [
+      id: 5, icon: '📌', level: 'Intermédiaire', title: 'Le clouage et l\'enfilade',
+      estTime: 8, category: 'Tactique', xp: 90, badge: '📌 Maître du Clouage',
+      summary: 'Paralyser les pièces adverses en les clouant contre le roi ou la dame.',
+      steps: [
         {
-          h: 'La fourchette',
-          p: 'Une pièce attaque deux pièces adverses à la fois. Le cavalier est le roi de la fourchette : il atteint des cases que les autres pièces ne couvrent pas. Exemple : un cavalier en c5 attaque à la fois la dame en b3 et la tour en a4.'
+          title: '1. Clouage absolu avec le fou',
+          coach: 'Clouez le cavalier adverse contre son roi avec votre fou en b5 !',
+          fen: 'r1bqk1nr/pppp1ppp/2n5/4p3/1bB1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4',
+          turn: 'w',
+          solution: ['O-O'],
+          hint: 'Mettez votre roi à l\'abri.',
+          successMsg: 'Excellent timing de roque pour préparer l\'offensive sur la colonne centrale.'
         },
         {
-          h: 'Le clouage',
-          p: 'Une pièce clouée ne peut pas bouger sans exposer une pièce de plus grande valeur derrière elle, souvent le roi. On dit que le clouage est « absolu » quand c\'est le roi qui est derrière.'
-        },
-        {
-          h: 'L\'enfilade',
-          p: 'L\'inverse du clouage : on attaque une pièce de grande valeur qui, en s\'éloignant, expose une autre pièce derrière. La tour et la dame sont parfaites pour enfiler le long d\'une ligne.'
+          title: '2. Enfilade mortelle sur la rangée',
+          coach: 'La dame noire est alignée derrière son roi. Jouez Ra8+ pour remporter la dame !',
+          fen: '3qk3/8/8/8/8/8/8/R5K1 w - - 0 1',
+          turn: 'w',
+          solution: ['Ra8+'],
+          hint: 'Avancez votre tour tout au bout de la colonne en a8.',
+          successMsg: 'Coup de génie ! Le roi doit fuir et la dame noire en d8 sera cueillie au coup suivant.'
         }
+      ],
+      sections: [
+        { h: 'Clouage vs Enfilade', p: 'Le clouage immobilise une pièce devant une plus forte, l\'enfilade attaque la plus forte en premier.' }
       ]
     },
     {
-      id: 6, icon: '🛡️', level: 'Intermédiaire', title: 'Stratégie : le centre',
-      estTime: 8, category: 'Stratégie',
-      sections: [
+      id: 6, icon: '🚪', level: 'Intermédiaire', title: 'Le mat du couloir',
+      estTime: 7, category: 'Finales', xp: 80, badge: '🚪 Gardien du Couloir',
+      summary: 'Exploitez les pions qui emprisonnent leur propre roi sur la 8e rangée.',
+      steps: [
         {
-          h: 'Pourquoi le centre ?',
-          p: 'Les pièces sont plus actives au centre : un cavalier central contrôle 8 cases, un cavalier au bord en contrôle seulement 4. Occuper le centre donne généralement plus de mobilité et limite les options adverses.'
+          title: '1. Mat du couloir immédiat',
+          coach: 'Le roi noir est bloqué derrière ses trois pions. Portez le mat avec Rc8# !',
+          fen: '6k1/5ppp/8/8/8/8/5PPP/2R3K1 w - - 0 1',
+          turn: 'w',
+          solution: ['Rc8#'],
+          hint: 'Montez votre tour en c8.',
+          successMsg: 'Échec et mat ! C\'est le mat du couloir : le roi n\'a aucune case de fuite (luft).'
         },
         {
-          h: 'Centre de pions vs centre de pièces',
-          p: 'Un centre de pions (e4/d4) est durable mais peut devenir une cible. Un centre de pièces (pièces appuyées sur e4/d4) est plus flexible mais demande un développement harmonieux pour être tenu.'
-        },
-        {
-          h: 'Les faiblesses',
-          p: 'Un pion isolé (sans pions voisins sur les colonnes adjacentes) peut être une faiblesse permanente : les cases devant lui sont difficiles à contrôler. Un pion double perd en mobilité et en flexibilité.'
+          title: '2. Créer une fenêtre d\'aération (Luft)',
+          coach: 'Évitez le mat du couloir dans votre propre camp en créant une case de fuite avec h3 !',
+          fen: '4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1',
+          turn: 'w',
+          solution: ['Rxe8#'],
+          hint: 'Capturez la tour noire en e8.',
+          successMsg: 'Mat du couloir inversé ! Vous avez éliminé la menace avant l\'adversaire.'
         }
+      ],
+      sections: [
+        { h: 'Éviter le couloir', p: 'Pousser h3 ou g3 crée une case de respiration vitale pour le roi.' }
       ]
     },
     {
-      id: 7, icon: '🏰', level: 'Avancé', title: 'Finales : le roi actif',
-      estTime: 8, category: 'Finales',
-      sections: [
+      id: 7, icon: '🔥', level: 'Avancé', title: 'Le sacrifice de fou en h7',
+      estTime: 10, category: 'Attaque', xp: 120, badge: '🔥 Attaquant d\'Élite',
+      summary: 'L\'attaque grecque classique : démolir le roque adverse par un sacrifice spectaculaire.',
+      steps: [
         {
-          h: 'Le roi est une pièce',
-          p: 'En finale, le roi devient une pièce offensive. Il doit s\'approcher du centre pour soutenir ses pions, défendre les cases clés et empêcher le roi adverse de passer.'
+          title: '1. Le sacrifice initial Bxh7+',
+          coach: 'Sacrifiez votre fou en h7 pour arracher le roi noir de son abri !',
+          fen: 'r1bq1rk1/pppp1ppp/2n2n2/2b1P3/8/3B1N2/PPPP1PPP/R1BQ1RK1 w - - 0 1',
+          turn: 'w',
+          solution: ['Bxh7+'],
+          hint: 'Capturez le pion h7 avec votre fou.',
+          successMsg: 'Coup de tonnerre ! Le roi noir est forcé de capturer en h7 et se retrouve à découvert.'
         },
         {
-          h: 'La règle du carré',
-          p: 'Pour savoir si un pion va promouvoir seul face au roi adverse : imaginez le carré dont le pion est un coin (vers la case de promotion). Si le roi adverse peut entrer dans ce carré, il rejoint le pion; sinon, le pion promeut. Un pion en 5e rangée avec le trait gagne souvent.'
-        },
-        {
-          h: 'L\'opposition',
-          p: 'Dans les finales de rois, la règle de l\'opposition est cruciale : les rois à distance d\'une case sur la même colonne, celui qui N\'a PAS le trait « possède » l\'opposition et contrôle la progression adverse.'
+          title: '2. Lancer l\'assaut avec Dame et Cavalier',
+          coach: 'Après Bxh7+ Kxh7, sautez en g5 avec échec pour faire entrer la dame !',
+          fen: 'r1bq1r2/pppp1ppk/2n2n2/2b1P3/8/5N2/PPPP1PPP/R1BQ1RK1 w - - 0 2',
+          turn: 'w',
+          solution: ['Ng5+'],
+          hint: 'Déplacez le cavalier en g5 avec échec.',
+          successMsg: 'L\'attaque est irrésistible ! La dame blanche va rejoindre h5 pour sceller le mat.'
         }
+      ],
+      sections: [
+        { h: 'Attaque grecque', p: 'Une des plus belles combinaisons de l\'histoire des échecs.', moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6', 'd4', 'exd4', 'cxd4', 'Bb4+', 'Nc3', 'Nxe4', 'O-O', 'Bxc3'] }
       ]
     },
     {
-      id: 8, icon: '♜', level: 'Avancé', title: 'Attaque et combinaisons',
-      estTime: 10, category: 'Attaque',
-      sections: [
+      id: 8, icon: '♟️', level: 'Avancé', title: 'Finale de pions & Promotion',
+      estTime: 9, category: 'Finales', xp: 110, badge: '👑 Roi de la Finale',
+      summary: 'Maîtrisez la poussée des pions passés et l\'opposition du roi en fin de partie.',
+      steps: [
         {
-          h: 'Le sacrifice',
-          p: 'Un sacrifice est un don de matériel pour un avantage plus grand : ouvrir les lignes vers le roi adverse, créer un mat forcé, ou obtenir une attaque décisive. Le sacrifice de fou en h7 (le classique : Bxh7+ !) est un exemple célèbre.'
+          title: '1. Prendre l\'opposition avec le roi',
+          coach: 'Placez votre roi en f4 face au roi noir pour dominer les cases clés !',
+          fen: '8/5pk1/6p1/7p/7P/5PK1/6P1/8 w - - 0 1',
+          turn: 'w',
+          solution: ['Kf4'],
+          hint: 'Avancez votre roi blanc en f4.',
+          successMsg: 'Opposition prise ! Le roi noir doit céder du terrain et vous permettra d\'infiltrer.'
         },
         {
-          h: 'L\'attaque Grecque',
-          p: 'Illustration : 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.c3 Nf6 5.d4 exd4 6.cxd4 Bb4+ 7.Nc3 Nxe4 8.O-O Bxc3. Traduire ce sacrifice permet d\'ouvrir la colonne f et de lancer les pièces lourdes vers le roi.',
-          moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6', 'd4', 'exd4', 'cxd4', 'Bb4+', 'Nc3', 'Nxe4', 'O-O', 'Bxc3']
-        },
-        {
-          h: 'La combinaison',
-          p: 'Une combinaison est une séquence forcée de coups, souvent avec sacrifices, qui aboutit à un avantage décidé. La calculer mentalement est l\'essence de la tactique : « si … alors … pour que … »'
+          title: '2. Promouvoir en Dame',
+          coach: 'Votre pion a atteint la 7e rangée. Poussez-le en a8 et transformez-le en Dame !',
+          fen: '8/P7/8/8/8/8/5k1K/8 w - - 0 1',
+          turn: 'w',
+          solution: ['a8=Q'],
+          hint: 'Avancez le pion a7 en a8 pour obtenir la Dame.',
+          successMsg: 'Victoire ! Avec une Dame fraîchement promue, le mat est une question de quelques coups.'
         }
+      ],
+      sections: [
+        { h: 'La règle du carré', p: 'Si le roi adverse ne peut pas entrer dans le carré du pion, le pion va à dame tout seul.' }
       ]
     }
   ];

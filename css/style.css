@@ -713,6 +713,161 @@ h3 { font-size: 17px; font-weight: 600; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ===================== Gamification & XP ===================== */
+.user-level-banner { display:flex; align-items:center; }
+.user-level-badge {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #0d0f12;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: .5px;
+}
+.streak-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(240, 198, 116, 0.12);
+  border: 1px solid rgba(240, 198, 116, 0.3);
+  color: var(--gold);
+  font-size: 13px;
+}
+.btn-gold {
+  background: linear-gradient(135deg, #f0c674, #d49f3e);
+  color: #17181c;
+  font-weight: 700;
+}
+.btn-gold:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 15px rgba(240, 198, 116, 0.3);
+}
+
+/* ===================== Coach & Leçons Interactives ===================== */
+.coach-card {
+  background: linear-gradient(145deg, #202227, #26282e);
+  border: 1px solid rgba(123, 216, 143, 0.2);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+}
+.coach-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(123, 216, 143, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid var(--accent);
+}
+.coach-bubble {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.coach-feedback {
+  margin-top: 10px;
+  animation: fadeIn 0.3s ease-out;
+}
+.coach-feedback.success {
+  background: rgba(123, 216, 143, 0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.coach-feedback.error {
+  background: rgba(224, 93, 93, 0.12);
+  border: 1px solid var(--danger);
+  color: #ff9b9b;
+}
+.coach-feedback.info {
+  background: rgba(91, 168, 245, 0.12);
+  border: 1px solid var(--accent-2);
+  color: var(--accent-2);
+}
+.lesson-card-interactive {
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.lesson-card-interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+.lesson-card-interactive.completed {
+  border-left: 4px solid var(--accent);
+}
+.lesson-icon-badge {
+  font-size: 28px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ===================== Puzzle Result & Rush HUD ===================== */
+.puzzle-result-box {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+  font-size: 14px;
+  animation: fadeIn 0.25s ease-out;
+}
+.puzzle-result-box.success {
+  background: rgba(123, 216, 143, 0.15);
+  border: 1px solid var(--accent);
+}
+.puzzle-result-box.error {
+  background: rgba(224, 93, 93, 0.15);
+  border: 1px solid var(--danger);
+}
+.puzzle-result-box.info {
+  background: rgba(91, 168, 245, 0.15);
+  border: 1px solid var(--accent-2);
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-top: 4px;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* ===================== Admin Dashboard ===================== */
+.admin-dashboard .stat-card {
+  text-align: left;
+}
+.border-b { border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.py-5 { padding-top: 5px; padding-bottom: 5px; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ===================== Responsive ===================== */
 @media (max-width: 900px) {
   .grid-4 { grid-template-columns: repeat(2,1fr); }
@@ -744,8 +899,9 @@ h3 { font-size: 17px; font-weight: 600; }
   .hamburger { display: block; }
 }
 
-/* Imprimer / inaccessible — bien pour la démo */
+/* Imprimer / inaccessible */
 @media print {
   .site-header, .toast-container { display:none; }
 }
+
 

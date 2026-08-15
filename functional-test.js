@@ -13,6 +13,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 const scripts = [
   'vendor/chess.min.js',
+  'js/audio.js',
   'js/storage.js',
   'js/engine.js',
   'data/puzzles.js',
@@ -25,6 +26,7 @@ const scripts = [
   'js/learn.js',
   'js/analyze.js',
   'js/openings.js',
+  'js/admin.js',
   'js/app.js'
 ];
 
@@ -60,28 +62,26 @@ try {
   Puzzles.container = container;
   Puzzles.puzzles = window.PUZZLES;
   const p = window.PUZZLES[0]; // Qxf7#
-  Puzzles.ratings = [p];
+  Puzzles.selectedPuzzles = [p];
   Puzzles.index = 0;
-  Puzzles._display();
   Puzzles.puzzle = p;
   Puzzles.chess = new window.Chess(p.fen);
   Puzzles.step = 0;
   Puzzles.solved = false;
-  Puzzles.chess.move('Qxf7#');
-  Puzzles._onMove({ san: 'Qxf7#' });
+  Puzzles._onPlayerMove({ san: 'Qxf7#' });
   if (Puzzles.solved) ok('Mat en 1 resolu');
   else fail('Mat en 1', 'pas resolu');
 
-  const p2 = window.PUZZLES[3]; // Nxe5
+  const p2 = window.PUZZLES[3];
   Puzzles.puzzle = p2;
   Puzzles.chess = new window.Chess(p2.fen);
   Puzzles.step = 0;
   Puzzles.solved = false;
   Puzzles.wrongCount = 0;
-  Puzzles._onMove({ san: 'Nf3' });
-  Puzzles._onMove({ san: 'Nf3' });
-  if (Puzzles.solved) ok('Mauvais coup -> lose correct');
-  else fail('Mauvais coup', 'pas marque lose');
+  Puzzles._onPlayerMove({ san: 'Nf3' });
+  Puzzles._onPlayerMove({ san: 'Nf3' });
+  if (Puzzles.solved) ok('Mauvais coup -> gestion erreur');
+  else fail('Mauvais coup', 'pas resolu/clos');
 } catch (e) {
   fail('puzzle test', e.message);
 }
@@ -100,16 +100,21 @@ try {
   fail('openings test', e.message);
 }
 
-console.log('=== LEÇONS ===');
+console.log('=== LEÇONS (interactif coach) ===');
 try {
   const Learn = window.Learn;
   const container = document.createElement('div');
   document.body.appendChild(container);
   Learn.container = container;
   Learn.lessons = window.LESSONS;
-  Learn._showLesson(window.LESSONS[2]); // lecon avec moves
-  if (container.querySelector('.lesson-detail')) ok('Detail lecon rendu');
-  else fail('Detail lecon', 'absent');
+  Learn._renderCatalogue();
+  if (container.querySelector('.lesson-card-interactive')) ok('Catalogue leçons rendu');
+  else fail('Catalogue leçons', 'absent');
+
+  // Tester démarrage leçon interactive
+  Learn._startInteractiveLesson(window.LESSONS[0]);
+  if (container.querySelector('.coach-bubble')) ok('Bulle coach interactive rendue');
+  else fail('Bulle coach', 'absente');
 } catch (e) {
   fail('learn test', e.message);
 }

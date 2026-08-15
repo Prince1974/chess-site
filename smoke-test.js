@@ -14,6 +14,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 // Liste des scripts dans l'ordre du HTML
 const scripts = [
   'vendor/chess.min.js',
+  'js/audio.js',
   'js/storage.js',
   'js/engine.js',
   'data/puzzles.js',
@@ -26,6 +27,7 @@ const scripts = [
   'js/learn.js',
   'js/analyze.js',
   'js/openings.js',
+  'js/admin.js',
   'js/app.js'
 ];
 
@@ -35,8 +37,6 @@ virtualConsole.on('jsdomError', (err) => {
   errors.push('jsdomError: ' + err.message);
 });
 virtualConsole.on('error', (msg) => {
-  // Stockfish worker ne peut pas s'initialiser dans jsdom (pas de Web Worker).
-  // C'est prévu : le moteur utilise un repli (coup aléatoire). On l'ignore.
   if (String(msg).includes('Stockfish init error')) return;
   errors.push('console.error: ' + msg);
 });
@@ -62,7 +62,7 @@ for (const s of scripts) {
 }
 
 // Vérifier que les globaux sont exposés
-const globals = ['Chess', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
+const globals = ['Chess', 'Sound', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'Admin', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
 const missing = globals.filter(g => !window[g]);
 if (missing.length) errors.push('Missing globals: ' + missing.join(', '));
 
@@ -81,10 +81,10 @@ try {
 
 // Vérifier qu'il y a des sections
 const sections = document.querySelectorAll('section[data-view]');
-if (sections.length !== 7) errors.push('Expected 7 sections, got ' + sections.length);
+if (sections.length !== 8) errors.push('Expected 8 sections, got ' + sections.length);
 
 // Tester chaque vue via les renderers
-const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile'];
+const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'admin'];
 for (const route of routes) {
   try {
     window.App.navigate(route);

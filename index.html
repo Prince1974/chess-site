@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -70,6 +70,7 @@
       <button class="nav-btn" data-route="openings">Ouvertures</button>
       <button class="nav-btn" data-route="analyze">Analyser</button>
       <button class="nav-btn" data-route="profile">Profil</button>
+      <button class="nav-btn btn-admin-tab" data-route="admin" style="color:var(--gold)">👑 Admin</button>
     </nav>
     <div class="header-user">
       <span class="user-chip" id="userChip" onclick="app.navigate('profile')">
@@ -101,8 +102,8 @@
     <ul>
       <li>Jouer contre l'IA à 10 niveaux de difficulté progressifs</li>
       <li>Multijoueur en ligne (WebRTC / Socket.io)</li>
-      <li>Entraîneur de puzzles tactiques classés</li>
-      <li>Cours d'échecs progressifs du débutant à l'avancé</li>
+      <li>Entraîneur de puzzles tactiques classés & Puzzle Rush</li>
+      <li>Cours d'échecs progressifs interactifs du débutant à l'avancé</li>
       <li>Explorateur d'ouvertures (Sicilienne, Italienne, Espagnole…)</li>
       <li>Analyse de parties avec évaluation en temps réel</li>
     </ul>
@@ -111,6 +112,7 @@
 </noscript>
 
 <script src="vendor/chess.min.js"></script>
+<script src="js/audio.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/engine.js"></script>
 <script src="data/puzzles.js"></script>
@@ -123,6 +125,7 @@
 <script src="js/learn.js"></script>
 <script src="js/analyze.js"></script>
 <script src="js/openings.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@ init() {
     },
 
     _initRoot() {
-      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="profile"></section>';
+      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="profile"></section><section data-view="admin"></section>';
       this.sections = {};
       document.querySelectorAll('section[data-view]').forEach(s => {
         this.sections[s.dataset.view] = s;
@@ -59,7 +59,7 @@ init() {
     },
 
 navigate(route) {
-      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile'];
+      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'admin'];
       if (!valid.includes(route)) route = 'home';
       // Fermer la nav mobile
       document.getElementById('mainNav').classList.remove('open');
@@ -99,14 +99,20 @@ navigate(route) {
         learn: () => this.renderLearn(sec),
         openings: () => this.renderOpenings(sec),
         analyze: () => this.renderAnalyze(sec),
-        profile: () => this.renderProfile(sec)
+        profile: () => this.renderProfile(sec),
+        admin: () => this.renderAdmin(sec)
       };
-      renderers[route]();
+      if (renderers[route]) renderers[route]();
     },
 
     _updateUserChip() {
       const p = Storage.getProfile();
-      document.getElementById('userName').textContent = p.name || 'Invité';
+      const lvl = Storage.getLevel();
+      const streak = Storage.getStreak();
+      const adminBadge = Storage.isAdmin() ? '<span class="badge badge-gold" style="font-size:10px;padding:2px 4px;margin-left:4px">👑 Admin</span>' : '';
+      const streakBadge = (streak && streak.count > 1) ? `<span style="font-size:11px;margin-left:4px">🔥${streak.count}</span>` : '';
+
+      document.getElementById('userName').innerHTML = `${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${adminBadge}`;
       document.getElementById('avatarLetter').textContent = (p.avatar || p.name || 'J').charAt(0).toUpperCase();
     },
 
@@ -115,30 +121,80 @@ navigate(route) {
       sec.innerHTML = '';
       const stats = Storage.getStats();
       const elo = Storage.getElo();
+      const lvl = Storage.getLevel();
+      const streak = Storage.getStreak();
+      const quests = Storage.getDailyQuests();
 
       // Hero
       const hero = document.createElement('div');
       hero.className = 'hero';
       hero.innerHTML = `
+        <div class="flex justify-between items-center flex-wrap gap-10 mb-15">
+          <div class="user-level-banner flex items-center gap-10">
+            <span class="user-level-badge">${lvl.icon} Niv. ${lvl.level}</span>
+            <div>
+              <div class="font-bold text-accent">${lvl.title}</div>
+              <div class="text-muted" style="font-size:11px">${lvl.currentXp} XP · ${lvl.xpInLevel}/${lvl.xpNeeded} XP (${lvl.progressPct}%)</div>
+            </div>
+          </div>
+          <div class="streak-pill">
+            <span>🔥</span>
+            <span>Série : <b>${streak.count} jour${streak.count > 1 ? 's' : ''}</b></span>
+          </div>
+        </div>
+
+        <div class="xp-bar-container mb-20" style="background:rgba(255,255,255,0.08);border-radius:10px;height:8px;overflow:hidden">
+          <div class="xp-bar-fill" style="width:${lvl.progressPct}%;background:linear-gradient(90deg, var(--accent), var(--gold));height:100%;border-radius:10px;transition:width 0.5s"></div>
+        </div>
+
         <h1>Jouez, apprenez, <span class="text-accent">progressez</span></h1>
-<p>Masterchessis : échecs en ligne contre l'IA ou des joueurs réels, puzzles, cours et analyse par l'IA optimisée.</p>
-        <div class="hero-btns">
+        <p>Masterchessis : académie d'échecs interactive, entraîneur de puzzles, multijoueur et matchs contre l'IA.</p>
+        <div class="hero-btns mt-20">
           <button class="btn btn-cta" data-go="play">♟ Jouer maintenant</button>
-          <button class="btn" data-go="online">🌐 Multijoueur</button>
-          <button class="btn btn-blue" data-go="puzzles">🧩 Puzzles</button>
+          <button class="btn btn-blue" data-go="puzzles">🧩 Puzzles Tactiques</button>
+          <button class="btn" data-go="learn">📚 Cours Interactifs</button>
         </div>
       `;
       sec.appendChild(hero);
+
+      // Quêtes Quotidiennes
+      const questCard = document.createElement('div');
+      questCard.className = 'card mb-25';
+      questCard.innerHTML = `
+        <div class="flex justify-between items-center mb-15">
+          <h3 class="flex items-center gap-8">
+            <span>🎯</span>
+            <span>Quêtes du Jour</span>
+          </h3>
+          <span class="badge badge-gold">Récompenses XP</span>
+        </div>
+        <div class="grid grid-3 gap-10">
+          ${quests.map(q => `
+            <div class="stat-card ${q.done ? 'border-accent' : ''}" style="padding:10px;text-align:left;border:1px solid ${q.done ? 'var(--accent)' : 'rgba(255,255,255,0.05)'}">
+              <div class="flex justify-between items-center mb-5">
+                <span style="font-size:18px">${q.icon}</span>
+                <span class="badge ${q.done ? 'badge-green' : 'badge-gold'}" style="font-size:10px">${q.done ? '✔ + ' + q.xp + ' XP' : '+' + q.xp + ' XP'}</span>
+              </div>
+              <div style="font-size:12px;font-weight:bold">${q.desc}</div>
+              <div class="text-muted mt-5 flex justify-between" style="font-size:11px">
+                <span>Progression :</span>
+                <b>${q.current}/${q.target}</b>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      sec.appendChild(questCard);
 
       const features = document.createElement('div');
       features.className = 'features';
       const items = [
         { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez l'IA à 10 niveaux de difficulté progressifs.", route: 'play' },
-        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC).', route: 'play', online: true },
-        { icon: '🧩', title: 'Puzzles', desc: 'Entraînez-vous avec des exercices tactiques classés.', route: 'puzzles' },
-        { icon: '📚', title: 'Leçons', desc: 'Cours progressifs du niveau débutant au avancé.', route: 'learn' },
-        { icon: '♟', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs idées.', route: 'openings' },
-        { icon: '📊', title: 'Analyse', desc: "Analysez vos parties avec le moteur d'analyse intégré.", route: 'analyze' }
+        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC / Socket.io).', route: 'play', online: true },
+        { icon: '🧩', title: 'Puzzles & Rush', desc: 'Entraînez-vous avec 27+ exercices tactiques et le mode Puzzle Rush 3 min.', route: 'puzzles' },
+        { icon: '📚', title: 'Académie Interactive', desc: 'Cours interactifs pas-à-pas avec coach virtuel comme Chess.com.', route: 'learn' },
+        { icon: '♟', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs idées stratégiques.', route: 'openings' },
+        { icon: '👑', title: 'Espace Admin', desc: 'Tableau de bord administrateur, KPIs et mode Godmode.', route: 'admin' }
       ];
       items.forEach(it => {
         const card = document.createElement('div');
@@ -719,6 +775,29 @@ navigate(route) {
         }
       });
 
+      // Carte d'Accès Espace Administrateur
+      const adminCard = document.createElement('div');
+      adminCard.className = 'card mb-20';
+      adminCard.style.border = '1px solid rgba(235, 179, 58, 0.3)';
+      const isAdmin = Storage.isAdmin();
+      adminCard.innerHTML = `
+        <div class="flex justify-between items-center flex-wrap gap-10">
+          <div>
+            <h3 class="flex items-center gap-8 text-gold">
+              <span>👑</span>
+              <span>Espace Administrateur & Godmode</span>
+            </h3>
+            <p class="text-secondary" style="font-size:12px">Accès illimité sans blocage, gestion des puzzles, leçons et statistiques complètes.</p>
+          </div>
+          <button class="btn btn-gold" id="btnGoAdminDashboard">${isAdmin ? 'Ouvrir Dashboard Admin ➔' : 'Se Connecter en Admin'}</button>
+        </div>
+      `;
+      sec.appendChild(adminCard);
+
+      adminCard.querySelector('#btnGoAdminDashboard').addEventListener('click', () => {
+        this.navigate('admin');
+      });
+
       // Historique
       const hisCard = document.createElement('div');
       hisCard.className = 'card';
@@ -748,6 +827,16 @@ navigate(route) {
       }
       hisCard.appendChild(list);
       sec.appendChild(hisCard);
+    },
+
+    // ===================== ESPACE ADMIN =====================
+    renderAdmin(sec) {
+      sec.innerHTML = '';
+      if (window.Admin) {
+        Admin.render(sec);
+      } else {
+        sec.innerHTML = '<div class="card center text-muted">Module Admin non chargé.</div>';
+      }
     }
   };
 

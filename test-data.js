@@ -61,26 +61,49 @@ const OPENINGS = opWin.OPENINGS || opWin.ChessOpenings;
   }
 });
 
-// ---- Valider les leçons (moves d'exemple) ----
+// ---- Valider les leçons (étapes interactives et moves d'exemple) ----
 console.log('\n=== LEÇONS ===');
 const lsWin = loadData('data/lessons.js');
 const LESSONS = lsWin.LESSONS || lsWin.ChessLessons;
 (Array.isArray(LESSONS) ? LESSONS : []).forEach((l) => {
-  l.sections.forEach((sec, si) => {
-    if (!sec.moves) return;
-    try {
-      const c = new Chess();
-      let ok = true;
-      for (const m of sec.moves) {
-        try { c.move(m); }
-        catch (e) { ok = false; console.log('BROKEN lesson', l.title, 'sec', si, '-> invalid move:', m, e.message); break; }
+  // 1. Étapes interactives
+  if (Array.isArray(l.steps)) {
+    l.steps.forEach((step, si) => {
+      try {
+        const c = new Chess(step.fen);
+        let ok = true;
+        for (const m of step.solution) {
+          try { c.move(m); }
+          catch (e) { ok = false; console.log('BROKEN lesson step', l.title, 'step', si, '-> invalid move:', m, e.message); break; }
+        }
+        if (ok) console.log('OK lesson step', l.title, 'step', si + 1);
+        else failures++;
+      } catch (e) {
+        failures++;
+        console.log('INIT ERROR lesson step', l.title, step.title, e.message);
       }
-      if (ok) console.log('OK lesson', l.title, 'example sec', si);
-    } catch (e) {
-      failures++;
-      console.log('INIT ERROR lesson', l.title);
-    }
-  });
+    });
+  }
+
+  // 2. Sections d'exemple
+  if (Array.isArray(l.sections)) {
+    l.sections.forEach((sec, si) => {
+      if (!sec.moves) return;
+      try {
+        const c = new Chess();
+        let ok = true;
+        for (const m of sec.moves) {
+          try { c.move(m); }
+          catch (e) { ok = false; console.log('BROKEN lesson sec', l.title, 'sec', si, '-> invalid move:', m, e.message); break; }
+        }
+        if (ok) console.log('OK lesson example', l.title, 'sec', si);
+        else failures++;
+      } catch (e) {
+        failures++;
+        console.log('INIT ERROR lesson example', l.title);
+      }
+    });
+  }
 });
 
 console.log('\n=== RÉSULTAT ===');
