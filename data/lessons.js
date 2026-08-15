@@ -241,6 +241,91 @@
       sections: [
         { h: 'La règle du carré', p: 'Si le roi adverse ne peut pas entrer dans le carré du pion, le pion va à dame tout seul.' }
       ]
+    },
+    {
+      id: 9, icon: '🛡️', level: 'Intermédiaire', title: 'La Défense Sicilienne',
+      estTime: 10, category: 'Ouvertures', xp: 100, badge: '🛡️ Sicilien',
+      summary: 'Apprenez l\'ouverture la plus populaire pour les Noirs contre 1.e4.',
+      steps: [
+        {
+          title: '1. Répondre à e4 par c5',
+          coach: 'Les Blancs jouent e4. Répondez par c5 pour créer une lutte asymétrique !',
+          fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+          turn: 'b',
+          solution: ['c5'],
+          hint: 'Avancez votre pion c7 de deux cases.',
+          successMsg: 'Parfait ! C\'est le début de la Sicilienne. Vous contrôlez la case d4 depuis le flanc.'
+        },
+        {
+          title: '2. Développer le cavalier d6',
+          coach: 'Préparez la variante Najdorf en jouant d6 pour libérer vos pièces et contrôler le centre.',
+          fen: 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
+          turn: 'b',
+          solution: ['d6'],
+          hint: 'Jouez votre pion d7 en d6.',
+          successMsg: 'Excellent. Vous préparez le développement de votre fou et maintenez la tension.'
+        }
+      ],
+      sections: [
+        { h: 'Pourquoi la Sicilienne ?', p: 'Elle permet de lutter pour la victoire avec les Noirs en évitant les symétries précoces.' }
+      ]
+    },
+    {
+      id: 10, icon: '🎯', level: 'Avancé', title: 'Avant-postes & Cavaliers',
+      estTime: 12, category: 'Stratégie', xp: 130, badge: '🎯 Stratège d\'Élite',
+      summary: 'Apprenez à installer vos cavaliers sur des cases inexpugnables au cœur du camp adverse.',
+      steps: [
+        {
+          title: '1. Installer un cavalier en d5',
+          coach: 'La case d5 est un trou dans la structure adverse. Amenez votre cavalier sur cet avant-poste !',
+          fen: 'r1bqk2r/pp2bppp/2nppn2/8/3NP3/2N5/PPP1BPPP/R1BQ1RK1 w kq - 0 8',
+          turn: 'w',
+          solution: ['Nb5'],
+          hint: 'Utilisez le cavalier d4 pour viser d5 ou b5.',
+          successMsg: 'Bien joué ! En d5, le cavalier devient une pièce monstrueuse que l\'adversaire aura du mal à chasser.'
+        }
+      ],
+      sections: [
+        { h: 'Qu\'est-ce qu\'un avant-poste ?', p: 'Une case (généralement sur la 5e ou 6e rangée) protégée par un pion et qui ne peut plus être attaquée par un pion adverse.' }
+      ]
+    },
+    {
+      id: 11, icon: '🗼', level: 'Débutant', title: 'Mat avec la Tour',
+      estTime: 8, category: 'Finales', xp: 90, badge: '🗼 Finisseur au Sommet',
+      summary: 'Maîtrisez la technique fondamentale pour mater avec une seule tour contre un roi dépouillé.',
+      steps: [
+        {
+          title: '1. Repousser le roi sur la bande',
+          coach: 'Utilisez votre tour pour couper le roi adverse. Amenez-le vers le bord de l\'échiquier !',
+          fen: '4k3/8/8/8/8/8/4R3/4K3 w - - 0 1',
+          turn: 'w',
+          solution: ['Re5+'],
+          hint: 'Donnez un échec pour forcer le roi à reculer vers la 6e rangée.',
+          successMsg: 'Parfait. La tour agit comme une barrière infranchissable.'
+        }
+      ],
+      sections: [
+        { h: 'La méthode de la boîte', p: 'Réduisez progressivement l\'espace du roi adverse avec votre tour et votre roi.' }
+      ]
+    },
+    {
+      id: 12, icon: '🧲', level: 'Avancé', title: 'Le Sacrifice d\'Attraction',
+      estTime: 10, category: 'Tactique', xp: 140, badge: '🧲 Magnétiseur',
+      summary: 'Forcez une pièce adverse (souvent le roi) à se déplacer sur une case fatale par un sacrifice.',
+      steps: [
+        {
+          title: '1. Attirer le roi en h7',
+          coach: 'Sacrifiez votre dame pour forcer le roi à se placer sur une trajectoire de mat !',
+          fen: 'r1b2rk1/pp1p1ppp/2n1p3/q7/2P5/2PB4/P2Q1PPP/R3K2R w KQ - 0 1',
+          turn: 'w',
+          solution: ['Bxh7+'],
+          hint: 'Utilisez votre fou en d3 pour attaquer h7.',
+          successMsg: 'Magnifique ! Le roi est attiré hors de son abri. L\'attaque peut maintenant se conclure.'
+        }
+      ],
+      sections: [
+        { h: 'Principe de l\'attraction', p: 'On sacrifie du matériel pour forcer une pièce ennemie sur une case où elle sera vulnérable à une fourchette, un clouage ou un mat.' }
+      ]
     }
   ];
 

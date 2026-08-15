@@ -37,7 +37,7 @@ init() {
     },
 
     _initRoot() {
-      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="profile"></section><section data-view="admin"></section>';
+      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="profile"></section><section data-view="secret-dashboard"></section>';
       this.sections = {};
       document.querySelectorAll('section[data-view]').forEach(s => {
         this.sections[s.dataset.view] = s;
@@ -52,14 +52,32 @@ init() {
           this.navigate(btn.dataset.route);
         });
       });
-      document.querySelector('.brand').addEventListener('click', () => this.navigate('home'));
+
+      // Déclencheur secret pour l'admin : 7 clics sur le logo
+      let logoClicks = 0;
+      let lastClick = 0;
+      document.querySelector('.brand').addEventListener('click', () => {
+        const now = Date.now();
+        if (now - lastClick > 1000) logoClicks = 0;
+        logoClicks++;
+        lastClick = now;
+
+        if (logoClicks >= 7) {
+          logoClicks = 0;
+          this.navigate('secret-dashboard');
+          if (window.ChessUI) ChessUI.toast('Accès restreint activé...', 'info');
+        } else if (logoClicks < 7) {
+          this.navigate('home');
+        }
+      });
+
       document.getElementById('hamburger').addEventListener('click', () => {
         document.getElementById('mainNav').classList.toggle('open');
       });
     },
 
-navigate(route) {
-      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'admin'];
+    navigate(route) {
+      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'secret-dashboard'];
       if (!valid.includes(route)) route = 'home';
       // Fermer la nav mobile
       document.getElementById('mainNav').classList.remove('open');
@@ -100,7 +118,7 @@ navigate(route) {
         openings: () => this.renderOpenings(sec),
         analyze: () => this.renderAnalyze(sec),
         profile: () => this.renderProfile(sec),
-        admin: () => this.renderAdmin(sec)
+        'secret-dashboard': () => this.renderAdmin(sec)
       };
       if (renderers[route]) renderers[route]();
     },
@@ -773,29 +791,6 @@ navigate(route) {
           this.renderProfile(sec);
           this._updateUserChip();
         }
-      });
-
-      // Carte d'Accès Espace Administrateur
-      const adminCard = document.createElement('div');
-      adminCard.className = 'card mb-20';
-      adminCard.style.border = '1px solid rgba(235, 179, 58, 0.3)';
-      const isAdmin = Storage.isAdmin();
-      adminCard.innerHTML = `
-        <div class="flex justify-between items-center flex-wrap gap-10">
-          <div>
-            <h3 class="flex items-center gap-8 text-gold">
-              <span>👑</span>
-              <span>Espace Administrateur & Godmode</span>
-            </h3>
-            <p class="text-secondary" style="font-size:12px">Accès illimité sans blocage, gestion des puzzles, leçons et statistiques complètes.</p>
-          </div>
-          <button class="btn btn-gold" id="btnGoAdminDashboard">${isAdmin ? 'Ouvrir Dashboard Admin ➔' : 'Se Connecter en Admin'}</button>
-        </div>
-      `;
-      sec.appendChild(adminCard);
-
-      adminCard.querySelector('#btnGoAdminDashboard').addEventListener('click', () => {
-        this.navigate('admin');
       });
 
       // Historique
