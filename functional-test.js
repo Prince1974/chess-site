@@ -125,15 +125,28 @@ async function testGame() {
     const game = Game.create({ container, mode: 'ai', settings: { level: 1, time: 10, increment: 0, color: 'w' } });
     if (container.querySelector('.board')) ok('Plateau de jeu rendu');
     else fail('Plateau de jeu', 'absent');
-const m = game.chess.move('e4'); // le board applique le coup avant onMove
+    const m = game.chess.move('e4'); // le board applique le coup avant onMove
     game._onPlayerMove(m);
     game.stopClock();
-    if (game.moveList.length >= 1) ok('Coup joue');
-    else fail('Coup joue', 'liste vide');
     await new Promise(r => setTimeout(r, 100));
     if (game.moveList.length >= 2) ok('Reponse IA recue');
     else fail('Reponse IA', 'pas de coup IA');
+
+    // Restaurer le vrai moteur
     window.Engine.getBestMove = origGetBestMove;
+
+    // Test moteur réel (getBestMove et analyze)
+    const moveW = await window.Engine.getBestMove('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', { level: 5 });
+    if (moveW) ok('Moteur getBestMove (Blancs) -> ' + (moveW.san || moveW));
+    else fail('Moteur getBestMove Blancs', 'aucun coup');
+
+    const moveB = await window.Engine.getBestMove('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1', { level: 5 });
+    if (moveB) ok('Moteur getBestMove (Noirs) -> ' + (moveB.san || moveB));
+    else fail('Moteur getBestMove Noirs', 'aucun coup');
+
+    const analysis = await window.Engine.analyze('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1');
+    if (analysis && analysis.bestMove) ok('Moteur analyze -> ' + analysis.bestMove + ' (score: ' + analysis.info.score + ')');
+    else fail('Moteur analyze', 'pas de resultat');
   } catch (e) {
     fail('game test', e.message);
   }

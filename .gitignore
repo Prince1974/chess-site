@@ -1,9 +1,9 @@
 # Dépendances
 node_modules/
 
-# Vendor généré (recréé via `npm run build`)
-vendor/chess.min.js
+# Vendor lourd (Stockfish WASM)
 vendor/stockfish/
+masterchess.sqlite
 
 # Divers
 .DS_Store

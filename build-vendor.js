@@ -22,12 +22,17 @@ fs.mkdirSync(path.join(root, 'vendor'), { recursive: true });
 fs.writeFileSync(path.join(root, 'vendor/chess.min.js'), wrapper);
 console.log('✔ vendor/chess.min.js généré');
 
-// 2. stockfish.js -> vendor/stockfish/
+// 2. stockfish.js -> vendor/stockfish/ (optionnel)
 const sfDir = path.join(root, 'node_modules/stockfish.js');
 const destDir = path.join(root, 'vendor/stockfish');
-fs.mkdirSync(destDir, { recursive: true });
-for (const f of ['stockfish.wasm.js', 'stockfish.wasm']) {
-  fs.copyFileSync(path.join(sfDir, f), path.join(destDir, f));
-  console.log('✔ vendor/stockfish/' + f);
+if (fs.existsSync(sfDir)) {
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const f of ['stockfish.wasm.js', 'stockfish.wasm']) {
+    const srcFile = path.join(sfDir, f);
+    if (fs.existsSync(srcFile)) {
+      fs.copyFileSync(srcFile, path.join(destDir, f));
+      console.log('✔ vendor/stockfish/' + f);
+    }
+  }
 }
 console.log('Build terminé.');

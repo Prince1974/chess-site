@@ -121,7 +121,7 @@ navigate(route) {
       hero.className = 'hero';
       hero.innerHTML = `
         <h1>Jouez, apprenez, <span class="text-accent">progressez</span></h1>
-<p>Masterchessis : échecs en ligne contre l'IA ou des joueurs réels, puzzles, cours et analyse par Stockfish.</p>
+<p>Masterchessis : échecs en ligne contre l'IA ou des joueurs réels, puzzles, cours et analyse par l'IA optimisée.</p>
         <div class="hero-btns">
           <button class="btn btn-cta" data-go="play">♟ Jouer maintenant</button>
           <button class="btn" data-go="online">🌐 Multijoueur</button>
@@ -133,12 +133,12 @@ navigate(route) {
       const features = document.createElement('div');
       features.className = 'features';
       const items = [
-        { icon: '⚔️', title: 'Contre l\'IA', desc: 'Affrontez Stockfish à 10 niveaux de difficulté.', route: 'play' },
+        { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez l'IA à 10 niveaux de difficulté progressifs.", route: 'play' },
         { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC).', route: 'play', online: true },
         { icon: '🧩', title: 'Puzzles', desc: 'Entraînez-vous avec des exercices tactiques classés.', route: 'puzzles' },
         { icon: '📚', title: 'Leçons', desc: 'Cours progressifs du niveau débutant au avancé.', route: 'learn' },
         { icon: '♟', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs idées.', route: 'openings' },
-        { icon: '📊', title: 'Analyse', desc: 'Analysez vos parties avec Stockfish en profondeur.', route: 'analyze' }
+        { icon: '📊', title: 'Analyse', desc: "Analysez vos parties avec le moteur d'analyse intégré.", route: 'analyze' }
       ];
       items.forEach(it => {
         const card = document.createElement('div');

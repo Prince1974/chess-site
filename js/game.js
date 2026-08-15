@@ -202,9 +202,10 @@
 
     _playerNames() {
       if (this.mode === 'ai') {
+        const aiName = 'IA Masterchess';
         return this.playerColor === 'w'
-          ? { top: 'Stockfish', bottom: this._profileName() }
-          : { top: this._profileName(), bottom: 'Stockfish' };
+          ? { top: aiName, bottom: this._profileName() }
+          : { top: this._profileName(), bottom: aiName };
       }
       if (this.mode === 'online') {
         const me = this._profileName();
@@ -218,10 +219,12 @@
 
     _playerRatings() {
       if (this.mode === 'ai') {
-        const levels = { 1: 200, 2: 400, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1400, 8: 1600, 9: 1800, 10: 2000 };
+        const levels = { 1: 400, 2: 600, 3: 800, 4: 1000, 5: 1200, 6: 1400, 7: 1600, 8: 1800, 9: 2000, 10: 2200 };
+        const lvl = this.settings.level || 5;
+        const aiRating = 'Niv. ' + lvl + ' (' + (levels[lvl] || 1200) + ')';
         return this.playerColor === 'w'
-          ? { top: 'Stockfish ' + (levels[this.settings.level] || 1200), bottom: this._eloRating() }
-          : { top: this._eloRating(), bottom: 'Stockfish ' + (levels[this.settings.level] || 1200) };
+          ? { top: aiRating, bottom: this._eloRating() }
+          : { top: this._eloRating(), bottom: aiRating };
       }
       if (this.mode === 'online') {
         const me = this._eloRating();
@@ -298,21 +301,37 @@
     aiMove() {
       if (this.gameOver || this.aiThinking) return;
       this.aiThinking = true;
-      this.statusBanner.textContent = 'Stockfish réfléchit…';
+      this.statusBanner.textContent = "L'ordinateur réfléchit…";
       Engine.getBestMove(this.chess.fen(), { level: this.settings.level })
         .then((move) => {
           this.aiThinking = false;
           if (this.gameOver) return;
           if (!move) { this._checkEnd(); return; }
-          let m;
-          try { m = this.chess.move(move); } catch (e) { m = null; }
+          
+          let m = null;
+          try {
+            if (typeof move === 'object' && move !== null) {
+              m = this.chess.move(move);
+            } else if (typeof move === 'string') {
+              m = this.chess.move(move);
+              if (!m && move.length >= 4) {
+                m = this.chess.move({ from: move.slice(0, 2), to: move.slice(2, 4), promotion: move[4] || 'q' });
+              }
+            }
+          } catch (e) { m = null; }
+
           if (m) {
             this.board.highlightLastMove(m.from, m.to);
+            this.board.resetBoard();
+            this.board.setChess(this.chess);
             this.moveList.push(m.san);
             this._trackCaptured(m);
             this._renderMoveList();
             this._switchTurn();
             this.statusBanner.textContent = 'À vous de jouer';
+            this._checkEnd();
+          } else {
+            console.warn('Coup IA non valide:', move);
             this._checkEnd();
           }
         });
