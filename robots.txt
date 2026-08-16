@@ -2,14 +2,8 @@
 # Tous les robots peuvent explorer le site
 User-agent: *
 Allow: /
-
-# Blocage des chemins techniques (fichiers générés/dépendances)
-Disallow: /vendor/
-Disallow: /node_modules/
-Disallow: /css/
-Disallow: /js/
-Disallow: /data/
-
-# Sitemap déclaré pour Google
+Allow: /js/
+Allow: /data/
+Allow: /vendor/
+Disallow: /admin/
 Sitemap: https://masterchessis.netlify.app/sitemap.xml
-

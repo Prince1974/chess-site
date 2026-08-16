@@ -2,6 +2,22 @@
    Masterchessis — Feuille de style du plateau (complémentaire)
    ============================================================ */
 
+:root {
+  --board-light: #ebecd0;
+  --board-dark: #779556;
+  --board-accent: #f5f682;
+}
+
+.square.light { background-color: var(--board-light); }
+.square.dark { background-color: var(--board-dark); }
+
+.coord.dark-coord { color: var(--board-dark); }
+.coord.light-coord { color: var(--board-light); }
+
+/* Styles de pièces */
+.piece-modern .piece { font-family: 'Segoe UI', Tahoma, sans-serif; }
+.piece-glass .piece { opacity: 0.85; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+
 /* Pièces SVG (unicode) */
 .piece {
   width: 100%;

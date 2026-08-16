@@ -286,19 +286,45 @@
     // ---------- Préférences ----------
     getPrefs() {
       return this.get('prefs', {
-        board: 'classic',
-        pieceStyle: 'unicode',
+        board: 'classic', // 'classic' | 'wood' | 'dark' | 'ocean'
+        pieceStyle: 'unicode', // 'unicode' | 'modern' | 'glass'
         sound: true,
         autoPromote: true,
         showCoords: true,
-        showLegalMoves: true
+        showLegalMoves: true,
+        animations: true
       });
     },
-    setPrefs(p) { this.set('prefs', p); },
+    setPrefs(p) { 
+      this.set('prefs', p); 
+      this.applyTheme();
+    },
     updatePref(patch) {
       const p = this.getPrefs();
-      this.setPrefs(Object.assign({}, p, patch));
-      return this.getPrefs();
+      const updated = Object.assign({}, p, patch);
+      this.setPrefs(updated);
+      return updated;
+    },
+    applyTheme() {
+      const p = this.getPrefs();
+      const root = document.documentElement;
+      
+      // Thèmes de plateau (couleurs)
+      const themes = {
+        classic: { light: '#ebecd0', dark: '#779556', accent: '#f5f682' },
+        wood: { light: '#eecf9f', dark: '#8b5a2b', accent: '#c8a064' },
+        dark: { light: '#4b4b4b', dark: '#2b2b2b', accent: '#6b6b6b' },
+        ocean: { light: '#b0c4de', dark: '#4682b4', accent: '#87ceeb' }
+      };
+      
+      const t = themes[p.board] || themes.classic;
+      root.style.setProperty('--board-light', t.light);
+      root.style.setProperty('--board-dark', t.dark);
+      root.style.setProperty('--board-accent', t.accent);
+
+      // Classes globales pour le style de pièces
+      document.body.classList.remove('piece-unicode', 'piece-modern', 'piece-glass');
+      document.body.classList.add('piece-' + (p.pieceStyle || 'unicode'));
     },
 
     // ---------- Statistiques d'activité globales ----------

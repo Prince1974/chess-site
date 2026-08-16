@@ -12,6 +12,7 @@
     game: null,
 
 init() {
+      Storage.applyTheme();
       this._bindNav();
       this._initRoot();
       // Écouter le hash pour le routing
@@ -791,6 +792,78 @@ init() {
           this.renderProfile(sec);
           this._updateUserChip();
         }
+      });
+
+      // ===================== PERSONNALISATION UI =====================
+      const prefs = Storage.getPrefs();
+      const settingsCard = document.createElement('div');
+      settingsCard.className = 'card mb-20';
+      settingsCard.innerHTML = `
+        <h3 class="mb-15 flex items-center gap-8">
+          <span>⚙️</span>
+          <span>Personnalisation de l'interface</span>
+        </h3>
+        
+        <div class="grid grid-2 gap-20">
+          <div class="form-group">
+            <label class="mb-5 block text-muted" style="font-size:13px">Thème de l'échiquier</label>
+            <select class="input" id="prefBoardTheme">
+              <option value="classic" ${prefs.board === 'classic' ? 'selected' : ''}>Classique (Vert)</option>
+              <option value="wood" ${prefs.board === 'wood' ? 'selected' : ''}>Bois (Marron)</option>
+              <option value="dark" ${prefs.board === 'dark' ? 'selected' : ''}>Sombre (Gris)</option>
+              <option value="ocean" ${prefs.board === 'ocean' ? 'selected' : ''}>Océan (Bleu)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="mb-5 block text-muted" style="font-size:13px">Style des pièces</label>
+            <select class="input" id="prefPieceStyle">
+              <option value="unicode" ${prefs.pieceStyle === 'unicode' ? 'selected' : ''}>Unicode (Standard)</option>
+              <option value="modern" ${prefs.pieceStyle === 'modern' ? 'selected' : ''}>Moderne (Sans-Serif)</option>
+              <option value="glass" ${prefs.pieceStyle === 'glass' ? 'selected' : ''}>Effet Verre</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="divider my-15"></div>
+
+        <div class="grid grid-3 gap-10">
+          <label class="checkbox-container">
+            <input type="checkbox" id="prefSound" ${prefs.sound ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Effets sonores
+          </label>
+          <label class="checkbox-container">
+            <input type="checkbox" id="prefCoords" ${prefs.showCoords ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Coordonnées
+          </label>
+          <label class="checkbox-container">
+            <input type="checkbox" id="prefLegal" ${prefs.showLegalMoves ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Coups légaux
+          </label>
+        </div>
+        
+        <div class="mt-15 text-secondary" style="font-size:12px">Les modifications sont appliquées instantanément.</div>
+      `;
+      sec.appendChild(settingsCard);
+
+      // Listeners pour les réglages
+      const update = () => {
+        const newPrefs = {
+          board: settingsCard.querySelector('#prefBoardTheme').value,
+          pieceStyle: settingsCard.querySelector('#prefPieceStyle').value,
+          sound: settingsCard.querySelector('#prefSound').checked,
+          showCoords: settingsCard.querySelector('#prefCoords').checked,
+          showLegalMoves: settingsCard.querySelector('#prefLegal').checked
+        };
+        Storage.setPrefs(newPrefs);
+        ChessUI.toast('Préférences mises à jour', 'success', 1000);
+      };
+
+      settingsCard.querySelectorAll('select, input[type="checkbox"]').forEach(el => {
+        el.addEventListener('change', update);
       });
 
       // Historique
