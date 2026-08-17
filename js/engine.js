@@ -388,10 +388,36 @@
   // ===================== OBJET ENGINE PUBLIC =====================
   const Engine = {
     chess: null,
+    stockfish: null,
+    sfAvailable: false,
 
     init() {
       this.chess = new Chess();
+      this._initStockfish();
       return this.chess;
+    },
+
+    _initStockfish() {
+      if (typeof Worker !== 'undefined') {
+        try {
+          this.stockfish = new Worker('vendor/stockfish/stockfish.wasm.js');
+          this.stockfish.onmessage = (e) => this._onSfMessage(e);
+          this.stockfish.postMessage('uci');
+          this.sfAvailable = true;
+          console.log('Stockfish init success');
+        } catch (e) {
+          console.warn('Stockfish init error:', e);
+          this.sfAvailable = false;
+        }
+      }
+    },
+
+    _onSfMessage(e) {
+      const line = e.data;
+      if (line.includes('uciok')) {
+        this.stockfish.postMessage('isready');
+      }
+      if (this._onMessage) this._onMessage(line);
     },
 
     newGame(fen) {
@@ -400,16 +426,54 @@
       } catch (e) {
         this.chess = new Chess();
       }
+      if (this.sfAvailable) {
+        this.stockfish.postMessage('ucinewgame');
+        this.stockfish.postMessage('isready');
+      }
       return this.chess;
     },
 
     /**
-     * Calcule le meilleur coup de façon autonome, fluide et non-bloquante
-     * @param {string} fen - FEN de la position
-     * @param {Object} opts - { level: 1..10, onInfo: function }
-     * @returns {Promise<Object|string>} coup choisi
+     * Calcule le meilleur coup via Stockfish ou fallback Minimax
      */
     getBestMove(fen, opts) {
+      if (!this.sfAvailable) return this._getMinimaxMove(fen, opts);
+
+      return new Promise((resolve) => {
+        const level = (opts && opts.level != null) ? Math.max(1, Math.min(10, opts.level)) : 5;
+        // Mappage niveau -> skill level (0-20) et profondeur
+        const skill = (level - 1) * 2;
+        const depth = Math.min(level + 2, 12);
+
+        this.stockfish.postMessage(`setoption name Skill Level value ${skill}`);
+        this.stockfish.postMessage(`position fen ${fen}`);
+        this.stockfish.postMessage(`go depth ${depth}`);
+
+        const listener = (e) => {
+          if (e.data.startsWith('bestmove')) {
+            this.stockfish.removeEventListener('message', listener);
+            const parts = e.data.split(' ');
+            const uci = parts[1];
+            
+            // Conversion UCI -> SAN pour une meilleure compatibilité et affichage
+            try {
+              const tempG = new Chess(fen);
+              const m = tempG.move({
+                from: uci.slice(0, 2),
+                to: uci.slice(2, 4),
+                promotion: uci[4] || undefined
+              });
+              resolve(m ? m.san : uci);
+            } catch (err) {
+              resolve(uci);
+            }
+          }
+        };
+        this.stockfish.addEventListener('message', listener);
+      });
+    },
+
+    _getMinimaxMove(fen, opts) {
       return new Promise((resolve) => {
         setTimeout(() => {
           try {
@@ -425,43 +489,14 @@
             const turn = g.turn();
             const isMaximizing = turn === 'w';
 
-            // 1. Coup du livre d'ouvertures (pour les niveaux >= 4 et début de partie)
+            // 1. Coup du livre d'ouvertures
             if (level >= 4 && g.history().length <= 12) {
               const bookMove = getBookMove(g);
-              if (bookMove) {
-                resolve(bookMove);
-                return;
-              }
+              if (bookMove) { resolve(bookMove); return; }
             }
 
-            // 2. Gestion des niveaux de difficulté
-            // Niveau 1 : Débutant (Aléatoire avec un peu de capture)
-            if (level === 1) {
-              if (Math.random() < 0.4) {
-                const captures = moves.filter(m => m.captured);
-                if (captures.length) {
-                  resolve(captures[Math.floor(Math.random() * captures.length)]);
-                  return;
-                }
-              }
-              resolve(moves[Math.floor(Math.random() * moves.length)]);
-              return;
-            }
-
-            // Niveau 2-3 : Novice (Hasard partiel + profondeur 1)
-            if (level <= 3 && Math.random() < (0.45 - level * 0.1)) {
-              const captures = moves.filter(m => m.captured);
-              if (captures.length && Math.random() < 0.7) {
-                resolve(captures[Math.floor(Math.random() * captures.length)]);
-                return;
-              }
-              resolve(moves[Math.floor(Math.random() * moves.length)]);
-              return;
-            }
-
-            // Configuration de la profondeur selon le niveau
-            let depth = 2;
-            let qDepth = 0;
+            // Fallback Minimax logic (simplified call)
+            let depth = 2; let qDepth = 0;
             if (level >= 4 && level <= 5) { depth = 2; qDepth = 2; }
             else if (level >= 6 && level <= 7) { depth = 3; qDepth = 3; }
             else if (level >= 8 && level <= 9) { depth = 4; qDepth = 3; }
@@ -469,7 +504,6 @@
 
             let bestScore = isMaximizing ? -Infinity : Infinity;
             let bestMoves = [];
-
             sortMoves(moves);
 
             for (let i = 0; i < moves.length; i++) {
@@ -477,93 +511,89 @@
               g.move(m);
               const score = minimax(g, depth - 1, -Infinity, Infinity, !isMaximizing, qDepth);
               g.undo();
-
-              // Ajout d'une légère variation aléatoire pour les niveaux intermédiaires
               const noise = (level < 8) ? (Math.random() * (10 - level) * 2 - (10 - level)) : 0;
               const adjustedScore = score + noise;
-
               if (isMaximizing) {
-                if (adjustedScore > bestScore) {
-                  bestScore = adjustedScore;
-                  bestMoves = [m];
-                } else if (Math.abs(adjustedScore - bestScore) < 5) {
-                  bestMoves.push(m);
-                }
+                if (adjustedScore > bestScore) { bestScore = adjustedScore; bestMoves = [m]; }
+                else if (Math.abs(adjustedScore - bestScore) < 5) { bestMoves.push(m); }
               } else {
-                if (adjustedScore < bestScore) {
-                  bestScore = adjustedScore;
-                  bestMoves = [m];
-                } else if (Math.abs(adjustedScore - bestScore) < 5) {
-                  bestMoves.push(m);
-                }
+                if (adjustedScore < bestScore) { bestScore = adjustedScore; bestMoves = [m]; }
+                else if (Math.abs(adjustedScore - bestScore) < 5) { bestMoves.push(m); }
               }
             }
-
             const chosen = bestMoves.length ? bestMoves[Math.floor(Math.random() * bestMoves.length)] : moves[0];
             resolve(chosen);
           } catch (err) {
-            console.error('Erreur moteur échecs IA:', err);
-            try {
-              const g = new Chess(fen);
-              const fallbackMoves = g.moves({ verbose: true });
-              resolve(fallbackMoves.length ? fallbackMoves[0] : null);
-            } catch (e) {
-              resolve(null);
-            }
+            resolve(null);
           }
         }, 30);
       });
     },
 
     /**
-     * Analyse complète d'une position (utilisée par la vue Analyser)
+     * Analyse complète d'une position
      */
     analyze(fen, opts) {
+      if (!this.sfAvailable) return this._analyzeMinimax(fen, opts);
+
       return new Promise((resolve) => {
-        setTimeout(() => {
-          try {
-            const g = new Chess(fen);
-            const scoreVal = evaluateBoard(g);
-            const resMove = this.getBestMove(fen, { level: 9 });
+        this.stockfish.postMessage(`position fen ${fen}`);
+        this.stockfish.postMessage(`go depth 12`);
 
-            resMove.then(m => {
-              let sanMove = null;
-              let uciMove = null;
-              if (m) {
-                if (typeof m === 'object') {
-                  sanMove = m.san || null;
-                  uciMove = (m.from && m.to) ? (m.from + m.to + (m.promotion || '')) : (m.san || null);
-                } else if (typeof m === 'string') {
-                  sanMove = m;
-                  uciMove = m;
-                }
-              }
-              const info = {
-                score: Math.round(scoreVal),
-                scoreKind: 'cp',
-                depth: 4,
-                bestMove: sanMove || uciMove
-              };
-
-              if (opts && typeof opts.onInfo === 'function') {
-                opts.onInfo(info);
-              }
-
-              resolve({
-                bestMove: sanMove || uciMove,
-                info: info
-              });
-            });
-          } catch (e) {
-            resolve(null);
+        const listener = (e) => {
+          const line = e.data;
+          if (line.includes('info depth')) {
+            const info = this._parseSfInfo(line);
+            if (info && opts && opts.onInfo) opts.onInfo(info);
           }
-        }, 40);
+          if (line.startsWith('bestmove')) {
+            this.stockfish.removeEventListener('message', listener);
+            const uci = line.split(' ')[1];
+            
+            // Conversion UCI -> SAN pour une meilleure compatibilité et affichage dans la vue Analyse
+            let san = uci;
+            try {
+              const tempG = new Chess(fen);
+              const m = tempG.move({
+                from: uci.slice(0, 2),
+                to: uci.slice(2, 4),
+                promotion: uci[4] || undefined
+              });
+              if (m) san = m.san;
+            } catch (err) {}
+            
+            resolve({ bestMove: san });
+          }
+        };
+        this.stockfish.addEventListener('message', listener);
       });
     },
 
-    /**
-     * Formate un score pour l'affichage utilisateur (+1.5, -0.4, #2...)
-     */
+    _parseSfInfo(line) {
+      const parts = line.split(' ');
+      const info = { score: 0, scoreKind: 'cp', depth: 0 };
+      const dIdx = parts.indexOf('depth');
+      if (dIdx !== -1) info.depth = parseInt(parts[dIdx + 1]);
+      
+      const sIdx = parts.indexOf('score');
+      if (sIdx !== -1) {
+        info.scoreKind = parts[sIdx + 1];
+        info.score = parseInt(parts[sIdx + 2]);
+      }
+      return info;
+    },
+
+    _analyzeMinimax(fen, opts) {
+      return new Promise((resolve) => {
+        this._getMinimaxMove(fen, { level: 9 }).then(m => {
+          const g = new Chess(fen);
+          const info = { score: evaluateBoard(g), scoreKind: 'cp', depth: 4, bestMove: m };
+          if (opts && opts.onInfo) opts.onInfo(info);
+          resolve({ bestMove: m, info });
+        });
+      });
+    },
+
     formatScore(info) {
       if (!info) return '0.0';
       if (info.scoreKind === 'mate') {

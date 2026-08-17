@@ -30,7 +30,7 @@
       if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '');
       if (window.MASTERCHESS_BACKEND) return window.MASTERCHESS_BACKEND.replace(/\/+$/, '');
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:8080';
-      return '';
+      return '/api';
     },
 
     loadSocketIo() {

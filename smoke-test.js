@@ -84,7 +84,7 @@ const sections = document.querySelectorAll('section[data-view]');
 if (sections.length !== 8) errors.push('Expected 8 sections, got ' + sections.length);
 
 // Tester chaque vue via les renderers
-const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'admin'];
+const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'secret-dashboard'];
 for (const route of routes) {
   try {
     window.App.navigate(route);

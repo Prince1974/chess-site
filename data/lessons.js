@@ -280,8 +280,8 @@
           coach: 'La case d5 est un trou dans la structure adverse. Amenez votre cavalier sur cet avant-poste !',
           fen: 'r1bqk2r/pp2bppp/2nppn2/8/3NP3/2N5/PPP1BPPP/R1BQ1RK1 w kq - 0 8',
           turn: 'w',
-          solution: ['Nb5'],
-          hint: 'Utilisez le cavalier d4 pour viser d5 ou b5.',
+          solution: ['Nd5'],
+          hint: 'Utilisez le cavalier d4 pour viser d5.',
           successMsg: 'Bien joué ! En d5, le cavalier devient une pièce monstrueuse que l\'adversaire aura du mal à chasser.'
         }
       ],

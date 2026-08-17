@@ -603,11 +603,14 @@ init() {
         </div>
         <div class="profile-name">
           <h2>${p.name || 'Invité'} ${jwtToken ? '<span class="badge badge-green">Compte Connecté</span>' : ''}</h2>
-          <div class="profile-elo">
+          <div class="profile-elo mb-10">
             <span class="badge badge-green">Rapide ${elo.rapid}</span>
             <span class="badge badge-blue">Blitz ${elo.blitz}</span>
             <span class="badge badge-gold">Puzzles ${elo.puzzle}</span>
           </div>
+          <button class="btn btn-sm btn-secondary" id="btnUploadPhotoDirect" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px">
+            <span>📷</span> Importer une photo de profil
+          </button>
         </div>
       `;
       if (p.photo) header.querySelector('#profileAvatarMain').style.background = 'transparent';
@@ -616,6 +619,9 @@ init() {
       // Listener photo
       const photoInput = header.querySelector('#photoInput');
       header.querySelector('.profile-avatar-container').addEventListener('click', () => photoInput.click());
+      const directBtn = header.querySelector('#btnUploadPhotoDirect');
+      if (directBtn) directBtn.addEventListener('click', () => photoInput.click());
+      
       photoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -751,25 +757,60 @@ init() {
       `;
       sec.appendChild(grid);
 
-      // Config Serveur Backend
-      const cfgCard = document.createElement('div');
-      cfgCard.className = 'card mb-20';
-      cfgCard.innerHTML = `
-        <h3 class="mb-10">🌐 Serveur Backend (pour Netlify / Distant)</h3>
-        <p class="text-muted mb-10" style="font-size:12px">Indiquez l'URL de votre backend Node.js (ex: <code>https://garichess-backend.onrender.com</code>) pour connecter le multijoueur en ligne et la base de données.</p>
-        <div class="flex gap-8">
-          <input class="input flex-1" id="backendUrlInput" value="${localStorage.getItem('masterchess_backend_url') || ''}" placeholder="https://garichess-backend.onrender.com">
-          <button class="btn btn-primary" id="saveBackendUrl">Enregistrer URL</button>
-        </div>
-      `;
-      sec.appendChild(cfgCard);
+      // Espace Administrateur (Secret Password Unlock)
+      if (!Storage.isAdmin()) {
+        const adminAccessCard = document.createElement('div');
+        adminAccessCard.className = 'card mb-20';
+        adminAccessCard.innerHTML = `
+          <h3 class="mb-10">🛡️ Accès Administrateur</h3>
+          <p class="text-muted mb-10" style="font-size:12px">Saisissez le mot de passe secret pour déverrouiller la configuration du serveur backend global.</p>
+          <div class="flex gap-8">
+            <input class="input flex-1" type="password" id="adminPasswordInput" placeholder="Mot de passe secret (ex: admin)">
+            <button class="btn btn-primary" id="btnUnlockAdmin">Déverrouiller</button>
+          </div>
+        `;
+        sec.appendChild(adminAccessCard);
 
-      cfgCard.querySelector('#saveBackendUrl').addEventListener('click', () => {
-        const val = cfgCard.querySelector('#backendUrlInput').value.trim();
-        localStorage.setItem('masterchess_backend_url', val);
-        ChessUI.toast('URL Backend mise à jour', 'success');
-        this.renderProfile(sec);
-      });
+        adminAccessCard.querySelector('#btnUnlockAdmin').addEventListener('click', () => {
+          const pwd = adminAccessCard.querySelector('#adminPasswordInput').value;
+          if (Storage.verifyAdminPassword(pwd)) {
+            ChessUI.toast('Mode Administrateur activé !', 'success');
+            this.renderProfile(sec);
+            this._updateUserChip();
+          } else {
+            ChessUI.toast('Mot de passe incorrect', 'error');
+          }
+        });
+      } else {
+        // Config Serveur Backend (Visible only to Admin)
+        const cfgCard = document.createElement('div');
+        cfgCard.className = 'card mb-20 border-gold';
+        cfgCard.innerHTML = `
+          <h3 class="mb-10" style="color:var(--gold)">👑 Configuration du Serveur Backend (Admin)</h3>
+          <p class="text-muted mb-10" style="font-size:12px">Indiquez l'URL de votre backend Node.js (ex: <code>https://garichess-backend.onrender.com</code>). <strong>Cette configuration s'applique pour tous les utilisateurs grâce au proxy de déploiement.</strong></p>
+          <div class="flex gap-8">
+            <input class="input flex-1" id="backendUrlInput" value="${localStorage.getItem('masterchess_backend_url') || ''}" placeholder="https://garichess-backend.onrender.com">
+            <button class="btn btn-primary" id="saveBackendUrl">Enregistrer URL</button>
+          </div>
+          <button class="btn btn-danger btn-sm mt-10" id="btnExitAdmin">Quitter le mode Admin</button>
+        `;
+        sec.appendChild(cfgCard);
+
+        cfgCard.querySelector('#saveBackendUrl').addEventListener('click', () => {
+          const val = cfgCard.querySelector('#backendUrlInput').value.trim();
+          localStorage.setItem('masterchess_backend_url', val);
+          ChessUI.toast('URL Backend mise à jour', 'success');
+          this.renderProfile(sec);
+        });
+
+        cfgCard.querySelector('#btnExitAdmin').addEventListener('click', () => {
+          Storage.setRole('user');
+          Storage.setGodMode(false);
+          ChessUI.toast('Mode Administrateur désactivé', 'info');
+          this.renderProfile(sec);
+          this._updateUserChip();
+        });
+      }
 
       // Détail des statistiques d'activité
       const fmtTime = (sec) => {
