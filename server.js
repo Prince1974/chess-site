@@ -38,42 +38,30 @@ if (usePostgres) {
     const pgSql = sql.replace(/\?/g, () => `$${pCount++}`);
     await pool.query(pgSql, params);
   };
-
-  (async () => {
-    await dbRun(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        rating INT NOT NULL DEFAULT 1200,
-        wins INT NOT NULL DEFAULT 0,
-        losses INT NOT NULL DEFAULT 0,
-        draws INT NOT NULL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    await dbRun(`
-      CREATE TABLE IF NOT EXISTS games (
-        id SERIAL PRIMARY KEY,
-        white_username VARCHAR(50),
-        black_username VARCHAR(50),
-        result VARCHAR(20),
-        pgn TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('Connecté à PostgreSQL (Cloud)');
-  })().catch(err => console.error('Erreur PostgreSQL init:', err));
-
+  console.log('Connecté à PostgreSQL (Cloud)');
 } else {
-  let sqliteDb;
-  try {
-    const Database = require('better-sqlite3');
-    sqliteDb = new Database(path.join(__dirname, 'masterchess.sqlite'));
+  // Fallback SQLite sans dépendance native complexe pour le déploiement
+  console.log('Mode SQLite/Mémoire : Utilisation de sqlite3 (plus compatible)');
+  const sqlite3 = require('sqlite3').verbose();
+  const db = new sqlite3.Database(path.join(__dirname, 'masterchess.sqlite'));
 
-    sqliteDb.exec(`
+  dbQuery = (sql, params = []) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
+  });
+  dbGet = (sql, params = []) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+  });
+  dbRun = (sql, params = []) => new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) { err ? reject(err) : resolve(this); });
+  });
+}
+
+// Initialisation des tables
+(async () => {
+  try {
+    await dbRun(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id ${usePostgres ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         rating INTEGER NOT NULL DEFAULT 1200,
@@ -82,8 +70,10 @@ if (usePostgres) {
         draws INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
+    `);
+    await dbRun(`
       CREATE TABLE IF NOT EXISTS games (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id ${usePostgres ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
         white_username TEXT,
         black_username TEXT,
         result TEXT,
@@ -91,20 +81,10 @@ if (usePostgres) {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `);
-
-    dbQuery = async (sql, params = []) => sqliteDb.prepare(sql).all(...params);
-    dbGet = async (sql, params = []) => sqliteDb.prepare(sql).get(...params);
-    dbRun = async (sql, params = []) => sqliteDb.prepare(sql).run(...params);
-    console.log('Connecté à SQLite local (masterchess.sqlite)');
-  } catch (e) {
-    console.warn('SQLite non disponible, fallback mémoire volatile:', e.message);
-    const memUsers = [];
-    const memGames = [];
-    dbQuery = async (sql) => memUsers;
-    dbGet = async (sql, p) => memUsers.find(u => u.username === p[0]) || null;
-    dbRun = async () => {};
+  } catch (err) {
+    console.error('Erreur initialisation DB:', err);
   }
-}
+})();
 
 /* ---------- App Express ---------- */
 const app = express();

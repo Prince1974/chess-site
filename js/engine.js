@@ -400,6 +400,7 @@
     _initStockfish() {
       if (typeof Worker !== 'undefined') {
         try {
+          if (this.stockfish) this.stockfish.terminate(); // Cleanup potential existing worker
           this.stockfish = new Worker('vendor/stockfish/stockfish.wasm.js');
           this.stockfish.onmessage = (e) => this._onSfMessage(e);
           this.stockfish.postMessage('uci');

@@ -12,7 +12,13 @@
     "test:functional": "node functional-test.js",
     "serve": "node server.js"
   },
-  "keywords": ["chess", "echecs", "stockfish", "puzzles", "apprentissage"],
+  "keywords": [
+    "chess",
+    "echecs",
+    "stockfish",
+    "puzzles",
+    "apprentissage"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -27,6 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.5",
     "socket.io": "^4.7.5",
+    "sqlite3": "^6.0.1",
     "stockfish.js": "^10.0.2"
   },
   "devDependencies": {

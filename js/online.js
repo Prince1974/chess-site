@@ -76,7 +76,8 @@
         const socket = window.io(baseUrl || window.location.origin, {
           withCredentials: true,
           auth: { token },
-          timeout: 5000
+          timeout: 8000, // Augmenté pour la fiabilité
+          reconnectionAttempts: 3
         });
         this.socket = socket;
         this.mode = 'socket';
@@ -84,13 +85,14 @@
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
             console.warn('Socket.io timeout, fallback WebRTC PeerJS');
-            socket.disconnect();
+            this.disconnect();
             this.hostGamePeerJS(opts).then(resolve).catch(reject);
-          }, 4000);
+          }, 8000);
 
-          socket.on('connect_error', () => {
+          socket.on('connect_error', (err) => {
+            console.error('Socket connect error:', err);
             clearTimeout(timeout);
-            socket.disconnect();
+            this.disconnect();
             this.hostGamePeerJS(opts).then(resolve).catch(reject);
           });
 
@@ -105,6 +107,7 @@
           socket.emit('create_room');
         });
       } catch (err) {
+        console.error('Socket fatal error, fallback to PeerJS:', err);
         return this.hostGamePeerJS(opts);
       }
     },
