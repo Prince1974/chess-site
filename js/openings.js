@@ -169,6 +169,16 @@
       let currentStep = 0;
       const chess = new Chess();
       
+      const header = document.createElement('div');
+      header.className = 'lesson-active-header mb-15 flex justify-between items-center';
+      header.innerHTML = `
+        <button class="btn btn-sm" id="btnStopPractice">← Quitter l'entraînement</button>
+        <div class="flex items-center gap-10">
+          <span class="badge badge-gold">Ouverture : ${opening.name}</span>
+        </div>
+      `;
+      c.appendChild(header);
+
       const layout = document.createElement('div');
       layout.className = 'puzzle-layout';
       
@@ -184,10 +194,10 @@
       panel.innerHTML = `
         <div class="coach-card card mb-15">
           <div class="flex items-center gap-10 mb-10">
-            <div class="coach-avatar">♟️</div>
+            <div class="coach-avatar">🧙‍♂️</div>
             <div>
-              <div class="font-bold text-accent">Entraîneur d'Ouvertures</div>
-              <div style="font-size:11px" class="text-muted">Pratiquez la ligne principale</div>
+              <div class="font-bold text-accent">Coach Masterchess</div>
+              <div style="font-size:11px" class="text-muted">Expert en Ouvertures</div>
             </div>
           </div>
           <div class="coach-bubble p-10 mb-10" id="practiceSpeech">
@@ -196,10 +206,13 @@
           <div class="coach-feedback p-10" id="practiceFeedback" style="display:none;font-size:13px;border-radius:6px"></div>
         </div>
         <div class="card mb-15">
-          <h3 class="mb-10">${opening.name}</h3>
+          <h3 class="mb-10" style="font-size:15px">Progression</h3>
           <div class="op-moves-progress" id="opMovesProgress"></div>
         </div>
-        <button class="btn btn-sm btn-block" id="btnStopPractice">← Retour à l'explorateur</button>
+        <div class="game-controls flex gap-8">
+          <button class="btn btn-sm" id="btnPracticeHint">💡 Indice</button>
+          <button class="btn btn-sm" id="btnPracticeReset">↺ Recommencer</button>
+        </div>
       `;
       layout.appendChild(panel);
 
@@ -216,35 +229,46 @@
       };
       updateProgress();
 
+      const showHint = () => {
+        const expected = opening.moves[currentStep];
+        feedbackEl.style.display = 'block';
+        feedbackEl.className = 'coach-feedback info';
+        feedbackEl.innerHTML = `💡 <b>Indice :</b> Le coup attendu est <b>${expected}</b>.`;
+      };
+
       const board = new ChessBoard({
         container: bWrap,
         chess: chess,
         interactive: true,
-        orientation: 'w',
+        orientation: opening.side === 'Blancs' ? 'w' : 'b',
         onMove: (move) => {
           const expected = opening.moves[currentStep];
           if (move.san === expected) {
             currentStep++;
             updateProgress();
-            if (window.Sound) Sound.playSuccess();
+            if (window.Sound) {
+              if (move.captured) Sound.playCapture();
+              else Sound.playMove();
+              Sound.playSuccess();
+            }
             
             if (currentStep < opening.moves.length) {
               speechEl.innerHTML = `Excellent ! Prochain coup : <b>${opening.moves[currentStep]}</b>.`;
               feedbackEl.style.display = 'none';
+              
+              // Si c'est au tour de l'adversaire (et qu'on pratique une ouverture spécifique),
+              // on pourrait faire jouer l'adversaire automatiquement si on avait les coups.
+              // Ici, opening.moves contient TOUS les coups (blancs et noirs).
+              // Donc on attend juste le prochain coup de la liste.
             } else {
-              speechEl.innerHTML = `Félicitations ! Vous avez maîtrisé la ligne principale de l'ouverture : <b>${opening.name}</b>.`;
-              feedbackEl.style.display = 'block';
-              feedbackEl.className = 'coach-feedback success';
-              feedbackEl.innerHTML = '✔ Ouverture complétée ! +25 XP';
-              Storage.addXp(25);
-              if (window.Sound) Sound.playWin();
+              this._renderOpeningVictory(opening);
             }
           } else {
             if (window.Sound) Sound.playWrong();
             board.flashError(move.to);
             feedbackEl.style.display = 'block';
             feedbackEl.className = 'coach-feedback error';
-            feedbackEl.innerHTML = `❌ Ce n'est pas le coup attendu pour cette variante. Le coup correct était <b>${expected}</b>.`;
+            feedbackEl.innerHTML = `❌ Ce n'est pas le coup attendu. Le coup correct était <b>${expected}</b>.`;
             
             // Undo move
             setTimeout(() => {
@@ -255,9 +279,36 @@
         }
       });
 
-      panel.querySelector('#btnStopPractice').addEventListener('click', () => {
-        this._build();
-      });
+      header.querySelector('#btnStopPractice').addEventListener('click', () => this._build());
+      panel.querySelector('#btnPracticeHint').addEventListener('click', showHint);
+      panel.querySelector('#btnPracticeReset').addEventListener('click', () => this._startPractice(opening));
+    },
+
+    _renderOpeningVictory(opening) {
+      const c = this.container;
+      c.innerHTML = '';
+      
+      if (window.Sound) Sound.playWin();
+      Storage.addXp(25);
+
+      const card = document.createElement('div');
+      card.className = 'card center';
+      card.style.maxWidth = '550px';
+      card.style.margin = '30px auto';
+      card.innerHTML = `
+        <div class="victory-stars mb-15" style="font-size:36px">⭐ ⭐ ⭐</div>
+        <h2 class="mb-10 text-accent">🎉 Ouverture Maîtrisée !</h2>
+        <h3 class="mb-15">${opening.name}</h3>
+        <p class="text-secondary mb-20">Vous avez joué parfaitement la ligne principale de l'ouverture <b>${opening.eco}</b>.</p>
+
+        <div class="badge badge-gold mb-25" style="font-size:16px;padding:8px 16px">+25 XP Gagnés</div>
+
+        <div class="flex gap-10 justify-center">
+          <button class="btn btn-cta" id="btnBackToExplo">Retour à l'explorateur</button>
+        </div>
+      `;
+      c.appendChild(card);
+      card.querySelector('#btnBackToExplo').addEventListener('click', () => this._build());
     }
   };
 

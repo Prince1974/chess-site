@@ -56,6 +56,7 @@
       return this.get('profile', {
         name: 'Invité',
         avatar: 'J',
+        photo: null,
         role: 'user', // 'user' | 'admin'
         createdAt: Date.now()
       });

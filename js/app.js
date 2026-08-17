@@ -132,7 +132,15 @@ init() {
       const streakBadge = (streak && streak.count > 1) ? `<span style="font-size:11px;margin-left:4px">🔥${streak.count}</span>` : '';
 
       document.getElementById('userName').innerHTML = `${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${adminBadge}`;
-      document.getElementById('avatarLetter').textContent = (p.avatar || p.name || 'J').charAt(0).toUpperCase();
+      
+      const avatarEl = document.getElementById('avatarLetter');
+      if (p.photo) {
+        avatarEl.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+        avatarEl.style.background = 'transparent';
+      } else {
+        avatarEl.textContent = (p.avatar || p.name || 'J').charAt(0).toUpperCase();
+        avatarEl.style.background = '';
+      }
     },
 
     // ===================== ACCUEIL =====================
@@ -586,7 +594,13 @@ init() {
       const header = document.createElement('div');
       header.className = 'profile-header';
       header.innerHTML = `
-        <div class="profile-avatar">${(p.avatar || p.name || 'J').charAt(0).toUpperCase()}</div>
+        <div class="profile-avatar-container" style="position:relative;cursor:pointer">
+          <div class="profile-avatar" id="profileAvatarMain">
+            ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : (p.avatar || p.name || 'J').charAt(0).toUpperCase()}
+          </div>
+          <div class="avatar-edit-overlay" style="position:absolute;bottom:0;right:0;background:var(--accent);color:#000;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--bg-primary)">📷</div>
+          <input type="file" id="photoInput" accept="image/*" style="display:none">
+        </div>
         <div class="profile-name">
           <h2>${p.name || 'Invité'} ${jwtToken ? '<span class="badge badge-green">Compte Connecté</span>' : ''}</h2>
           <div class="profile-elo">
@@ -596,7 +610,29 @@ init() {
           </div>
         </div>
       `;
+      if (p.photo) header.querySelector('#profileAvatarMain').style.background = 'transparent';
       sec.appendChild(header);
+
+      // Listener photo
+      const photoInput = header.querySelector('#photoInput');
+      header.querySelector('.profile-avatar-container').addEventListener('click', () => photoInput.click());
+      photoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 1024 * 1024) { // Limite 1Mo pour localStorage
+          ChessUI.toast('Image trop lourde (max 1Mo)', 'error');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target.result;
+          Storage.updateProfile({ photo: base64 });
+          this.renderProfile(sec);
+          this._updateUserChip();
+          ChessUI.toast('Photo de profil mise à jour', 'success');
+        };
+        reader.readAsDataURL(file);
+      });
 
       // Auth Account Card
       const authCard = document.createElement('div');

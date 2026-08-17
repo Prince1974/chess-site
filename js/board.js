@@ -1,7 +1,7 @@
 /* ============================================================
    Masterchessis — board.js
    Plateau interactif : rendu 8x8, pièces unicode, coordonnées,
-   sélection, mouvements, animation, promotion
+   sélection, mouvements, animation, promotion, DRAG & DROP
    ============================================================ */
 (function () {
   'use strict';
@@ -12,16 +12,6 @@
   };
 
   class ChessBoard {
-    /**
-     * @param {Object} cfg
-     *  - container: HTMLElement
-     *  - chess: instance chess.js
-     *  - interactive (bool)
-     *  - orientation ('w'|'b')
-     *  - onMove(move) callback
-     *  - onSelect(square) callback
-     *  - onClearSelect callback
-     */
     constructor(cfg) {
       this.container = cfg.container;
       this.chess = cfg.chess;
@@ -34,9 +24,15 @@
       this.showLegalMoves = cfg.showLegalMoves !== false;
       this.selected = null;
       this.legalTargets = new Set();
-      this.lastMove = null; // {from, to}
+      this.lastMove = null;
       this.checkSquare = null;
-      this.pendingPromotion = null; // {from, to, color}
+      this.pendingPromotion = null;
+
+      // --- État du drag & drop ---
+      this.dragging = false;
+      this.dragData = null; // { from, piece, color, type, element, clone }
+      this.ghostElement = null; // clone de la pièce qui suit la souris
+      this.dropTarget = null; // case de destination survolée
 
       this.flipped = false;
       this._build();
@@ -64,7 +60,6 @@
           cell.dataset.square = sq;
           wrap.appendChild(cell);
           if (this.showCoords) {
-            // coordonnées
             if (rank === '8') {
               const y = document.createElement('span');
               y.className = 'coord y ' + (isLight ? 'dark-coord' : 'light-coord');
@@ -116,23 +111,191 @@
       if (this.onClearSelect) this.onClearSelect();
     }
 
+    // ---- Événements souris et tactiles ----
     _attachEvents() {
+      // Clic (conservé pour rétrocompatibilité)
       this.container.addEventListener('click', (e) => {
         const cell = e.target.closest('.square');
         if (!cell) return;
         const sq = cell.dataset.square;
+        // Ne pas traiter un clic pendant un drag
+        if (this.dragging) return;
         this._handleClick(sq);
       });
+
+      // Événements de souris pour le drag
+      this.container.addEventListener('mousedown', (e) => {
+        const cell = e.target.closest('.square');
+        if (!cell) return;
+        const sq = cell.dataset.square;
+        this._onPointerDown(e, sq, 'mouse');
+      });
+
+      // Mouvement de la souris (suivi du ghost)
+      document.addEventListener('mousemove', (e) => {
+        if (!this.dragging) return;
+        e.preventDefault();
+        this._onPointerMove(e.clientX, e.clientY);
+      });
+
+      document.addEventListener('mouseup', (e) => {
+        if (!this.dragging) return;
+        this._onPointerUp(e.clientX, e.clientY);
+      });
+
+      // Événements tactiles
+      this.container.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const cell = target?.closest('.square');
+        if (!cell) return;
+        const sq = cell.dataset.square;
+        // Simuler un pointer down
+        this._onPointerDown(e, sq, 'touch');
+      }, { passive: false });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!this.dragging) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        this._onPointerMove(touch.clientX, touch.clientY);
+      }, { passive: false });
+
+      document.addEventListener('touchend', (e) => {
+        if (!this.dragging) return;
+        const touch = e.changedTouches[0];
+        this._onPointerUp(touch.clientX, touch.clientY);
+        e.preventDefault();
+      }, { passive: false });
     }
 
+    // ---- Gestion du drag ----
+    _onPointerDown(e, sq, type) {
+      if (this.pendingPromotion) return;
+      if (this.chess.isGameOver()) return;
+      const piece = this.chess.get(sq);
+      if (!piece || piece.color !== this.chess.turn()) return;
+
+      // On commence le drag
+      this.dragging = true;
+      this.dragData = { from: sq, piece };
+      // Créer le ghost
+      const cell = this.squares[sq];
+      const pieceEl = cell?.querySelector('.piece');
+      if (!pieceEl) {
+        // Pas de pièce affichée, annuler
+        this.dragging = false;
+        return;
+      }
+      // Créer un clone du span de la pièce
+      const clone = pieceEl.cloneNode(true);
+      const rect = pieceEl.getBoundingClientRect();
+      
+      clone.style.position = 'fixed';
+      clone.style.pointerEvents = 'none';
+      clone.style.zIndex = '1000';
+      clone.style.width = rect.width + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.fontSize = window.getComputedStyle(pieceEl).fontSize;
+      clone.style.display = 'flex';
+      clone.style.alignItems = 'center';
+      clone.style.justifyContent = 'center';
+      clone.style.transform = 'translate(-50%, -50%)';
+      clone.style.transition = 'none';
+      clone.style.opacity = '0.9';
+      document.body.appendChild(clone);
+      this.ghostElement = clone;
+
+      // Masquer la pièce originale (pour l'instant)
+      pieceEl.style.visibility = 'hidden';
+
+      // On sélectionne la case (pour afficher les coups légaux)
+      this.selected = sq;
+      this._computeLegalTargets(sq);
+      this.render();
+      if (this.onSelect) this.onSelect(sq, this.legalTargets);
+
+      // Mettre à jour la position du ghost
+      const ev = type === 'mouse' ? e : e.touches[0];
+      if (ev) {
+        this._updateGhostPosition(ev.clientX, ev.clientY);
+      }
+    }
+
+    _updateGhostPosition(clientX, clientY) {
+      if (!this.ghostElement) return;
+      this.ghostElement.style.left = clientX + 'px';
+      this.ghostElement.style.top = clientY + 'px';
+    }
+
+    _onPointerMove(clientX, clientY) {
+      this._updateGhostPosition(clientX, clientY);
+      // Calculer la case survolée
+      const el = document.elementFromPoint(clientX, clientY);
+      const cell = el?.closest('.square');
+      const sq = cell?.dataset.square;
+      this.dropTarget = sq || null;
+      // Mettre en évidence visuelle (optionnel)
+      if (sq) {
+        // On peut surligner la case survolée si c'est une cible légale
+        // (on le fait via render)
+        this.render();
+        // Ajouter une classe temporaire pour le survol
+        const targetCell = this.squares[sq];
+        if (targetCell) {
+          targetCell.classList.add('hover');
+        }
+      }
+    }
+
+    _onPointerUp(clientX, clientY) {
+      // Nettoyer ghost
+      if (this.ghostElement) {
+        this.ghostElement.remove();
+        this.ghostElement = null;
+      }
+
+      // Restaurer la visibilité de la pièce d'origine
+      if (this.dragData) {
+        const from = this.dragData.from;
+        const cell = this.squares[from];
+        const pieceEl = cell?.querySelector('.piece');
+        if (pieceEl) pieceEl.style.visibility = 'visible';
+      }
+
+      // Déterminer la case de drop
+      let target = this.dropTarget;
+      if (!target) {
+        // Si aucun survol, on essaie de déterminer la case sous le pointeur
+        const el = document.elementFromPoint(clientX, clientY);
+        const cell = el?.closest('.square');
+        target = cell?.dataset.square || null;
+      }
+
+      // Exécuter le mouvement si la case est légale
+      const from = this.dragData?.from;
+      if (from && target && this.legalTargets.has(target)) {
+        this._tryMove(from, target);
+      } else {
+        // Snapback : on remet la pièce (déjà visible) et on efface la sélection
+        this.clearSelection();
+        this.render();
+      }
+
+      // Nettoyer l'état du drag
+      this.dragging = false;
+      this.dragData = null;
+      this.dropTarget = null;
+      this.render(); // pour supprimer les surlignages
+    }
+
+    // ---- Clic (hérité) ----
     _handleClick(sq) {
       if (this.chess.isGameOver()) return;
       const piece = this.chess.get(sq);
 
-      // Si une promotion est en attente, ignorer
       if (this.pendingPromotion) return;
 
-      // Sélection d'une pièce du camp dont c'est le tour
       if (piece && piece.color === this.chess.turn()) {
         this.selected = sq;
         this._computeLegalTargets(sq);
@@ -141,14 +304,12 @@
         return;
       }
 
-      // Tente un mouvement vers la case cliquée
       if (this.selected && this.legalTargets.has(sq)) {
         const from = this.selected;
         this._tryMove(from, sq);
         return;
       }
 
-      // Clic sur case vide / pièce adverse sans sélection -> annule
       if (this.selected) {
         this.clearSelection();
         this.render();
@@ -166,10 +327,6 @@
       const isPromotion = piece && piece.type === 'p' &&
         ((piece.color === 'w' && to[1] === '8') || (piece.color === 'b' && to[1] === '1'));
 
-      if (isPromotion && this.pendingPromotion !== null) {
-        // déjà en attente -> on choisit la dame par défaut
-      }
-
       if (isPromotion) {
         this.pendingPromotion = { from, to, color: piece.color };
         this._showPromotionBar(from, to, piece.color);
@@ -180,7 +337,6 @@
     }
 
     _showPromotionBar(from, to, color) {
-      // Barre de promotion dans le plateau
       if (!this.promotionBarEl) {
         this.promotionBarEl = document.createElement('div');
         this.promotionBarEl.className = 'promo-bar';
@@ -213,7 +369,6 @@
         this.lastMove = { from: move.from, to: move.to };
         this.checkSquare = null;
         if (this.chess.inCheck()) {
-          // trouve le roi en échec
           const turn = this.chess.turn();
           const board = this.chess.board();
           for (let r = 0; r < 8; r++) {
@@ -235,20 +390,17 @@
     _renderSquare(sq) {
       const cell = this.squares[sq];
       if (!cell) return;
-      cell.classList.remove('selected', 'move-target', 'capturable', 'last-move-from', 'last-move-to', 'check', 'hint');
+      cell.classList.remove('selected', 'move-target', 'capturable', 'last-move-from', 'last-move-to', 'check', 'hint', 'hover');
 
       const piece = this.chess.get(sq);
 
-      // Dernier coup
       if (this.lastMove) {
         if (this.lastMove.from === sq) cell.classList.add('last-move-from');
         if (this.lastMove.to === sq) cell.classList.add('last-move-to');
       }
 
-      // Échec
       if (this.checkSquare === sq) cell.classList.add('check');
 
-      // Sélection & cibles
       if (this.selected === sq) {
         cell.classList.add('selected');
       }
@@ -257,7 +409,11 @@
         else cell.classList.add('move-target');
       }
 
-      // Pièce
+      // Survol (hover) pendant le drag
+      if (this.dragging && this.dropTarget === sq && this.legalTargets.has(sq)) {
+        cell.classList.add('hover');
+      }
+
       let pieceEl = cell.querySelector('.piece');
       if (piece) {
         if (!pieceEl) {
@@ -279,7 +435,6 @@
       this._updateBoardClass();
       const files = 'abcdefgh'.split('');
       const ranks = '87654321'.split('');
-      // Dans l'ordre du DOM, mais l'orientation gère le flip via CSS transform.
       for (const rank of ranks) {
         for (const file of files) {
           this._renderSquare(file + rank);
@@ -287,9 +442,7 @@
       }
     }
 
-    // ---- API publique ----
     makeMove(move) {
-      // Applique un move déjà joué (par ex. par IA) avec mise à jour
       this.lastMove = { from: move.from, to: move.to };
       this.checkSquare = null;
       this.clearSelection();

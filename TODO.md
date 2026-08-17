@@ -44,5 +44,11 @@
 - [x] Tracker GA4 : page_view, game_end, puzzle_solved, lesson_completed
 - [x] Statistiques locales : visites, temps passé, parties par mode (storage.js activity)
 - [ ] Guide Google Search Console (vérification + soumission sitemap)
+
+## Étape 9 : Améliorations UX & Profil
+- [x] Implémenter le Drag & Drop fluide sur le plateau (board.js)
+- [x] Rendre la partie Ouvertures interactive comme le module Apprentissage (openings.js)
+- [x] Ajouter la possibilité d'ajouter des photos de profil (storage.js, app.js, game.js)
+
 </content>
 

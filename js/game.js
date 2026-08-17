@@ -188,9 +188,20 @@
     _playerCard(name, rating, clockKey) {
       const card = document.createElement('div');
       card.className = 'player-card';
-      const letter = (name || '?').charAt(0).toUpperCase();
+      
+      const p = Storage.getProfile();
+      const isUser = (name === p.name);
+      let avatarHtml = '';
+      
+      if (isUser && p.photo) {
+        avatarHtml = `<div class="avatar" style="background:transparent"><img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover"></div>`;
+      } else {
+        const letter = (name || '?').charAt(0).toUpperCase();
+        avatarHtml = `<div class="avatar">${letter}</div>`;
+      }
+      
       card.innerHTML = `
-        <div class="avatar">${letter}</div>
+        ${avatarHtml}
         <div class="player-meta">
           <div class="player-name">${name}</div>
           <div class="player-rating">${rating}</div>
