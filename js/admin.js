@@ -251,7 +251,8 @@
             <td style="padding:10px">${u.username}</td>
             <td style="padding:10px">${u.rating}</td>
             <td style="padding:10px">
-              <button class="btn btn-sm btn-danger" onclick="Admin.banUser(${u.id})">Bannir</button>
+              <button class="btn btn-sm btn-danger" onclick="Admin.banUser(${u.id})">Suppr.</button>
+              <button class="btn btn-sm btn-blue" onclick="Admin.resetRating(${u.id})">Reset Elo</button>
             </td>
           </tr>
         `).join('');
@@ -261,9 +262,27 @@
     },
 
     async banUser(id) {
-        if (!confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ?')) return;
-        // Implémentation du bannissement...
-        ChessUI.toast('Fonctionnalité de bannissement à implémenter', 'info');
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
+        try {
+            await fetch(`/api/admin/users/${id}/ban`, { 
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('masterchess_jwt') }
+            });
+            ChessUI.toast('Utilisateur supprimé', 'success');
+            this._loadUsers(document.querySelector('#userListBody'));
+        } catch(e) { ChessUI.toast('Erreur', 'error'); }
+    },
+
+    async resetRating(id) {
+        if (!confirm('Réinitialiser le rating à 1200 ?')) return;
+        try {
+            await fetch(`/api/admin/users/${id}/reset-rating`, { 
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('masterchess_jwt') }
+            });
+            ChessUI.toast('Rating réinitialisé', 'success');
+            this._loadUsers(document.querySelector('#userListBody'));
+        } catch(e) { ChessUI.toast('Erreur', 'error'); }
     },
 
       wrap.querySelector('#btnExportData').addEventListener('click', () => {

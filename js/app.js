@@ -101,8 +101,7 @@ init() {
       modal.className = 'modal-overlay';
       modal.innerHTML = `
         <div class="card modal-content" style="max-width: 600px; width: 90vw;">
-          <h3>📊 Bilan de la Partie</h3>
-          <p>Analyse rapide de votre performance...</p>
+          <h3>📊 Bilan de la Partie (Stockfish)</h3>
           <div id="reviewContent">Analyse en cours...</div>
           <button class="btn btn-secondary mt-20" id="closeReview">Fermer</button>
         </div>
@@ -110,11 +109,37 @@ init() {
       document.body.appendChild(modal);
       modal.querySelector('#closeReview').addEventListener('click', () => modal.remove());
 
-      // Analyse background
       const history = gameInstance.fenHistory;
-      let accuracyScore = 0;
-      // TODO: Implémenter l'analyse de chaque coup et calcul du score
-      modal.querySelector('#reviewContent').innerHTML = 'Analyse terminée (Simulation). Score précision : 85%';
+      let totalMoves = history.length - 1;
+      let brilliantMoves = 0;
+      let blunders = 0;
+      let results = [];
+
+      const analyzeNext = async (idx) => {
+        if (idx >= totalMoves) {
+          modal.querySelector('#reviewContent').innerHTML = `
+            <div>Précision estimée : ${Math.round(100 - (blunders * 5))}%</div>
+            <div>Brillants : ${brilliantMoves} | Gaffes (Blunders) : ${blunders}</div>
+            <div class="mt-10">${results.join('<br>')}</div>
+          `;
+          return;
+        }
+
+        const fen = history[idx];
+        const res = await Engine.analyze(fen);
+        const bestMove = res.bestMove;
+        const playedMove = gameInstance.moveList[idx];
+
+        let classification = playedMove === bestMove ? '✅ Excellent' : '⚠️ À améliorer';
+        if (playedMove === bestMove) brilliantMoves++;
+        else blunders++;
+
+        results.push(`Coup ${idx + 1}: Joué <b>${playedMove}</b> | Meilleur <b>${bestMove}</b> - ${classification}`);
+        modal.querySelector('#reviewContent').innerHTML = `Analyse du coup ${idx + 1}/${totalMoves}...`;
+        await analyzeNext(idx + 1);
+      };
+
+      analyzeNext(0);
     },
 
     _onHash() {

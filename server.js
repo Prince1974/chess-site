@@ -126,9 +126,14 @@ async function adminMiddleware(req, res, next) {
   }
 }
 
-app.get('/api/admin/users', adminMiddleware, async (req, res) => {
-  const users = await dbQuery('SELECT id, username, rating, wins, losses, draws FROM users');
-  res.json({ users });
+app.post('/api/admin/users/:id/ban', adminMiddleware, async (req, res) => {
+  await dbRun('DELETE FROM users WHERE id = ?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/users/:id/reset-rating', adminMiddleware, async (req, res) => {
+  await dbRun('UPDATE users SET rating = 1200 WHERE id = ?', [req.params.id]);
+  res.json({ ok: true });
 });
 
 const allowedOrigins = [
