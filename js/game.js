@@ -40,6 +40,7 @@
       this.gameOver = false;
       this.result = null;
       this.moveList = [];
+      this.fenHistory = [this.chess.fen()];
       this.captured = { w: [], b: [] };
       this.aiThinking = false;
 
@@ -178,6 +179,7 @@
         <button class="btn btn-sm" id="btnDraw" title="Proposer nulle">½</button>
         <button class="btn btn-sm" id="btnNew">Nouvelle</button>
         <button class="btn btn-sm" id="btnFlip">⇄</button>
+        <button class="btn btn-sm btn-primary" id="btnBilan" style="display:none;background:var(--gold);color:#000;font-weight:bold;grid-column: span 2">📊 Bilan de Partie</button>
       `;
       s.appendChild(controls);
 
@@ -266,12 +268,22 @@
       const draw = this.sidePanel.querySelector('#btnDraw');
       const newBtn = this.sidePanel.querySelector('#btnNew');
       const flip = this.sidePanel.querySelector('#btnFlip');
+      const bilan = this.sidePanel.querySelector('#btnBilan');
 
       undo.addEventListener('click', () => this.undoMove());
       resign.addEventListener('click', () => this._resign());
       draw.addEventListener('click', () => this._offerDraw());
       newBtn.addEventListener('click', () => this._newGame());
       flip.addEventListener('click', () => this.board.flip());
+      if (bilan) {
+        bilan.addEventListener('click', () => {
+          if (window.App && typeof window.App.showGameReview === 'function') {
+            window.App.showGameReview(this);
+          } else {
+            alert('Analyse en cours d\'initialisation...');
+          }
+        });
+      }
     },
 
     _bindBoard() {
@@ -292,6 +304,7 @@
 
     _postMove(move) {
       this.moveList.push(move.san);
+      this.fenHistory.push(this.chess.fen());
       this._trackCaptured(move);
       this._renderMoveList();
       this._switchTurn();
@@ -336,6 +349,7 @@
             this.board.resetBoard();
             this.board.setChess(this.chess);
             this.moveList.push(m.san);
+            this.fenHistory.push(this.chess.fen());
             this._trackCaptured(m);
             this._renderMoveList();
             this._switchTurn();
@@ -353,11 +367,14 @@
         // annuler 2 demis-coups si l'IA a joué
         this.chess.undo();
         if (this.moveList.length) this.moveList.pop();
+        if (this.fenHistory.length > 1) this.fenHistory.pop();
         this.chess.undo();
         if (this.moveList.length) this.moveList.pop();
+        if (this.fenHistory.length > 1) this.fenHistory.pop();
       } else {
         this.chess.undo();
         if (this.moveList.length) this.moveList.pop();
+        if (this.fenHistory.length > 1) this.fenHistory.pop();
       }
       this.gameOver = false;
       this.result = null;
@@ -400,6 +417,9 @@
       this._renderStatus();
       this._saveResult(obj);
       if (this.onStatusChange) this.onStatusChange(obj);
+      
+      const bilanBtn = this.sidePanel.querySelector('#btnBilan');
+      if (bilanBtn) bilanBtn.style.display = 'grid';
     },
 
     _renderStatus() {
@@ -486,6 +506,7 @@ const s = Storage.getStats();
       this.gameOver = false;
       this.result = null;
       this.moveList = [];
+      this.fenHistory = [this.chess.fen()];
       this.captured = { w: [], b: [] };
       this.aiThinking = false;
       this._initClock();

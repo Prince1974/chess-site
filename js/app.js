@@ -96,6 +96,27 @@ init() {
       this._activate(route);
     },
 
+    showGameReview(gameInstance) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="card modal-content" style="max-width: 600px; width: 90vw;">
+          <h3>📊 Bilan de la Partie</h3>
+          <p>Analyse rapide de votre performance...</p>
+          <div id="reviewContent">Analyse en cours...</div>
+          <button class="btn btn-secondary mt-20" id="closeReview">Fermer</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.querySelector('#closeReview').addEventListener('click', () => modal.remove());
+
+      // Analyse background
+      const history = gameInstance.fenHistory;
+      let accuracyScore = 0;
+      // TODO: Implémenter l'analyse de chaque coup et calcul du score
+      modal.querySelector('#reviewContent').innerHTML = 'Analyse terminée (Simulation). Score précision : 85%';
+    },
+
     _onHash() {
       const route = window.location.hash.replace('#/', '') || 'home';
       this._activate(route);

@@ -326,8 +326,66 @@
       sections: [
         { h: 'Principe de l\'attraction', p: 'On sacrifie du matériel pour forcer une pièce ennemie sur une case où elle sera vulnérable à une fourchette, un clouage ou un mat.' }
       ]
+    },
+    {
+      id: 13, icon: '🔍', level: 'Intermédiaire', title: 'L\'Attaque à la Découverte',
+      estTime: 8, category: 'Tactique', xp: 95, badge: '🔍 Œil de Lynx',
+      summary: 'Déplacez une pièce pour révéler l\'attaque masquée d\'une autre.',
+      steps: [
+        {
+          title: '1. Révéler l\'attaque de la tour',
+          coach: 'Votre fou bloque le rayon d\'action de votre tour sur la dame adverse. Déplacez le fou en h7 pour faire échec tout en attaquant la dame !',
+          fen: '3r2k1/pp3ppp/2n5/3q4/8/1B1b4/PP3PPP/R1Q1R1K1 w - - 0 1',
+          turn: 'w',
+          solution: ['Bxd5'],
+          hint: 'Prenez le fou en d3 avec votre fou b3, libérant l\'attaque de la tour e1 sur la dame d5 !',
+          successMsg: 'Génie ! En prenant le fou, vous gagnez la dame adverse car elle est attaquée par la tour e1 pendant que le fou fait échec.'
+        }
+      ],
+      sections: [
+        { h: 'Attaque à la découverte', p: 'Une arme dévastatrice car la pièce qui bouge crée une menace directe (comme un échec) pendant que la pièce révélée attaque une autre cible.' }
+      ]
+    },
+    {
+      id: 14, icon: '⚖️', level: 'Avancé', title: 'L\'opposition des rois',
+      estTime: 12, category: 'Finales', xp: 120, badge: '⚖️ Maître de l\'Opposition',
+      summary: 'Maîtrisez la technique essentielle pour promouvoir vos pions en finale.',
+      steps: [
+        {
+          title: '1. Bloquer le roi noir',
+          coach: 'Pour pousser votre pion e, vous devez d\'abord forcer le roi adverse à reculer. Prenez l\'opposition en plaçant votre roi en e5 !',
+          fen: '8/4k3/8/4P3/4K3/8/8/8 w - - 0 1',
+          turn: 'w',
+          solution: ['Ke4'],
+          hint: 'Amenez votre roi directement en face du roi adverse sur la colonne e.',
+          successMsg: 'Excellent ! C\'est l\'opposition directe. Le roi noir doit maintenant s\'écarter, vous permettant d\'avancer.'
+        }
+      ],
+      sections: [
+        { h: 'L\'opposition', p: 'Les rois se font face séparés par une seule case. Celui qui n\'a pas à jouer détient l\'opposition et contrôle l\'accès.' }
+      ]
+    },
+    {
+      id: 15, icon: '🏛️', level: 'Débutant', title: 'Le Système de Londres',
+      estTime: 10, category: 'Ouvertures', xp: 80, badge: '🏛️ Bâtisseur',
+      summary: 'Une ouverture solide et facile à jouer pour débuter avec les Blancs.',
+      steps: [
+        {
+          title: '1. Développer le fou de cases claires',
+          coach: 'Après 1.d4, au lieu de jouer c4, développez rapidement votre fou en f4 pour créer un système solide !',
+          fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1',
+          turn: 'w',
+          solution: ['Bf4'],
+          hint: 'Sortez votre fou de c1 vers f4.',
+          successMsg: 'Parfait ! C\'est la marque de fabrique du Système de Londres, un fou actif hors de la chaîne de pions.'
+        }
+      ],
+      sections: [
+        { h: 'Le Londres', p: 'Très populaire car les Blancs développent leurs pièces sur des cases naturelles de façon très solide, peu importe les coups des Noirs.' }
+      ]
     }
   ];
+
 
   window.ChessLessons = window.LESSONS = LESSONS;
 })();
