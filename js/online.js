@@ -29,8 +29,8 @@
       const custom = localStorage.getItem('masterchess_backend_url');
       if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '');
       if (window.MASTERCHESS_BACKEND) return window.MASTERCHESS_BACKEND.replace(/\/+$/, '');
-      // Retourner une chaîne vide pour que l'appel fetch (baseUrl + '/api/...') soit valide (relatif)
-      return '';
+      // URL par défaut pour tous les utilisateurs (Expert fix)
+      return 'https://masterchessis.onrender.com';
     },
 
     loadSocketIo() {

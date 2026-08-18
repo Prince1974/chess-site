@@ -216,12 +216,12 @@ init() {
       const features = document.createElement('div');
       features.className = 'features';
       const items = [
-        { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez l'IA à 10 niveaux de difficulté progressifs.", route: 'play' },
-        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC / Socket.io).', route: 'play', online: true },
+        { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez l'IA Stockfish 10 à 10 niveaux de difficulté progressifs.", route: 'play' },
+        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (Socket.io).', route: 'play', online: true },
         { icon: '🧩', title: 'Puzzles & Rush', desc: 'Entraînez-vous avec 27+ exercices tactiques et le mode Puzzle Rush 3 min.', route: 'puzzles' },
         { icon: '📚', title: 'Académie Interactive', desc: 'Cours interactifs pas-à-pas avec coach virtuel comme Chess.com.', route: 'learn' },
         { icon: '♟', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs idées stratégiques.', route: 'openings' },
-        { icon: '👑', title: 'Espace Admin', desc: 'Tableau de bord administrateur, KPIs et mode Godmode.', route: 'admin' }
+        { icon: '📊', title: 'Mon Profil', desc: 'Consultez votre classement, votre historique et personnalisez votre avatar.', route: 'profile' }
       ];
       items.forEach(it => {
         const card = document.createElement('div');
