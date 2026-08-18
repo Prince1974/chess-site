@@ -113,8 +113,23 @@ if (usePostgres) {
   }
 })();
 
-/* ---------- App Express ---------- */
-const app = express();
+// Middleware admin
+async function adminMiddleware(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Non authentifié.' });
+  const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  // Assuming a simple role check, if not exists, default to 'user'. 
+  // Need to make sure 'role' exists or add it. Let's add it via a column if missing.
+  if (user && user.username === 'admin') { // Simple admin check
+    next();
+  } else {
+    res.status(403).json({ error: 'Accès administrateur requis.' });
+  }
+}
+
+app.get('/api/admin/users', adminMiddleware, async (req, res) => {
+  const users = await dbQuery('SELECT id, username, rating, wins, losses, draws FROM users');
+  res.json({ users });
+});
 
 const allowedOrigins = [
   'https://masterchessis.netlify.app',

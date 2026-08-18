@@ -150,6 +150,25 @@
           </div>
         </div>
 
+        <div class="card mb-25">
+          <h2 class="mb-15">👥 Gestion des Utilisateurs</h2>
+          <div class="table-responsive">
+            <table class="table" style="width:100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border)">
+                  <th style="padding:10px;text-align:left">ID</th>
+                  <th style="padding:10px;text-align:left">Utilisateur</th>
+                  <th style="padding:10px;text-align:left">Rating</th>
+                  <th style="padding:10px;text-align:left">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="userListBody">
+                <tr><td colspan="4" style="padding:20px;text-align:center">Chargement des utilisateurs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Section 2 : Contrôles Super Admin (Godmode) -->
         <h2 class="mb-15">👑 Contrôles d'Accès Sans Restriction (Godmode)</h2>
         <div class="card mb-25">
@@ -215,6 +234,37 @@
         this._renderLoginPrompt();
         if (window.app) app._updateUserChip();
       });
+
+      // Charger les utilisateurs
+      this._loadUsers(wrap.querySelector('#userListBody'));
+    },
+
+    async _loadUsers(tbody) {
+      try {
+        const response = await fetch('/api/admin/users', {
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('masterchess_jwt') }
+        });
+        const { users } = await response.json();
+        tbody.innerHTML = users.map(u => `
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px">${u.id}</td>
+            <td style="padding:10px">${u.username}</td>
+            <td style="padding:10px">${u.rating}</td>
+            <td style="padding:10px">
+              <button class="btn btn-sm btn-danger" onclick="Admin.banUser(${u.id})">Bannir</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center" class="text-danger">Erreur chargement utilisateurs.</td></tr>';
+      }
+    },
+
+    async banUser(id) {
+        if (!confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ?')) return;
+        // Implémentation du bannissement...
+        ChessUI.toast('Fonctionnalité de bannissement à implémenter', 'info');
+    },
 
       wrap.querySelector('#btnExportData').addEventListener('click', () => {
         const json = Storage.exportData();
