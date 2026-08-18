@@ -29,8 +29,8 @@
       const custom = localStorage.getItem('masterchess_backend_url');
       if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '');
       if (window.MASTERCHESS_BACKEND) return window.MASTERCHESS_BACKEND.replace(/\/+$/, '');
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:8080';
-      return '/api';
+      // Retourner une chaîne vide pour que l'appel fetch (baseUrl + '/api/...') soit valide (relatif)
+      return '';
     },
 
     loadSocketIo() {
