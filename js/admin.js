@@ -226,6 +226,8 @@
 
       c.appendChild(wrap);
 
+      this._bindDashboardBindings(wrap);
+
       // Bindings
       wrap.querySelector('#btnAdminLogout').addEventListener('click', () => {
         Storage.setRole('user');
@@ -285,6 +287,8 @@
         } catch(e) { ChessUI.toast('Erreur', 'error'); }
     },
 
+    // Bindings restants
+    _bindDashboardBindings(wrap) {
       wrap.querySelector('#btnExportData').addEventListener('click', () => {
         const json = Storage.exportData();
         const blob = new Blob([json], { type: 'application/json' });
