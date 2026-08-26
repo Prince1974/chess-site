@@ -197,6 +197,8 @@
       
       if (isUser && p.photo) {
         avatarHtml = `<div class="avatar" style="background:transparent"><img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover"></div>`;
+      } else if (this.mode === 'ai' && !isUser && this.settings.bot) {
+        avatarHtml = `<div class="avatar" style="font-size:24px;background:rgba(255,255,255,0.08);border:1px solid var(--accent)">${this.settings.bot.avatar || '🤖'}</div>`;
       } else {
         const letter = (name || '?').charAt(0).toUpperCase();
         avatarHtml = `<div class="avatar">${letter}</div>`;
@@ -215,7 +217,8 @@
 
     _playerNames() {
       if (this.mode === 'ai') {
-        const aiName = 'IA Masterchess';
+        const bot = this.settings.bot;
+        const aiName = bot ? `${bot.avatar} ${bot.name}` : 'IA Masterchess';
         return this.playerColor === 'w'
           ? { top: aiName, bottom: this._profileName() }
           : { top: this._profileName(), bottom: aiName };
@@ -232,6 +235,13 @@
 
     _playerRatings() {
       if (this.mode === 'ai') {
+        const bot = this.settings.bot;
+        if (bot) {
+          const aiRating = `Bot (${bot.elo} Elo)`;
+          return this.playerColor === 'w'
+            ? { top: aiRating, bottom: this._eloRating() }
+            : { top: this._eloRating(), bottom: aiRating };
+        }
         const levels = { 1: 400, 2: 600, 3: 800, 4: 1000, 5: 1200, 6: 1400, 7: 1600, 8: 1800, 9: 2000, 10: 2200 };
         const lvl = this.settings.level || 5;
         const aiRating = 'Niv. ' + lvl + ' (' + (levels[lvl] || 1200) + ')';

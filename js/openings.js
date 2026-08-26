@@ -1,7 +1,9 @@
 /* ============================================================
    Masterchessis — openings.js
-   Explorateur d'ouvertures : liste, recherche, détail,
-   rejeu des coups sur un mini plateau
+   Explorateur d'ouvertures d'échecs Pro (Style Chess.com)
+   - Statistiques de victoires (Blancs / Nulles / Noirs)
+   - Filtres par 1.e4, 1.d4, Flancs et recherche temps réel
+   - Entraîneur interactif étape par étape avec validation
    ============================================================ */
 (function () {
   'use strict';
@@ -10,6 +12,7 @@
     container: null,
     openings: [],
     active: null,
+    currentFilter: 'all',
 
     async render(container) {
       this.container = container;
@@ -20,74 +23,99 @@
     _build() {
       const c = this.container;
       c.innerHTML = '';
-      const h = document.createElement('h1');
-      h.textContent = '♟ Explorateur d\'ouvertures';
-      h.classList.add('center', 'mb-10');
-      c.appendChild(h);
-      const sub = document.createElement('p');
-      sub.className = 'center text-secondary mb-20';
-      sub.textContent = 'Découvrez les grandes ouvertures et leurs idées stratégiques.';
-      c.appendChild(sub);
+      
+      const wrap = document.createElement('div');
+      wrap.className = 'openings-wrapper';
+      wrap.innerHTML = `
+        <div class="center mb-20">
+          <h1 class="mb-5">♟️ Explorateur & Maître des Ouvertures</h1>
+          <p class="text-secondary" style="font-size:14px">Analysez les variantes maîtresses, leurs statistiques mondiales de victoires et pratiquez-les interactivement.</p>
+        </div>
 
-      const layout = document.createElement('div');
-      layout.className = 'puzzle-layout';
-      layout.style.alignItems = 'flex-start';
-      c.appendChild(layout);
+        <div class="flex justify-center gap-10 flex-wrap mb-20">
+          <button class="btn btn-sm ${this.currentFilter === 'all' ? 'btn-cta' : ''}" data-filter="all">Toutes (${this.openings.length})</button>
+          <button class="btn btn-sm ${this.currentFilter === 'e4' ? 'btn-cta' : ''}" data-filter="e4">⚔️ 1.e4 (Pion Roi)</button>
+          <button class="btn btn-sm ${this.currentFilter === 'd4' ? 'btn-cta' : ''}" data-filter="d4">🛡️ 1.d4 (Pion Dame)</button>
+          <button class="btn btn-sm ${this.currentFilter === 'flank' ? 'btn-cta' : ''}" data-filter="flank">🏹 Flancs (1.c4 / 1.f4)</button>
+        </div>
 
-      // Liste + recherche
-      const listCol = document.createElement('div');
-      listCol.className = 'puzzle-panel';
-      layout.appendChild(listCol);
+        <div class="puzzle-layout" style="align-items:flex-start">
+          <div class="puzzle-panel">
+            <input class="input mb-10" id="openingsSearch" placeholder="🔍 Filtrer par nom, code ECO (ex: B20) ou coup...">
+            <div class="opening-list card" id="openingsList" style="max-height: 580px; overflow-y: auto;"></div>
+          </div>
+          <div class="puzzle-panel" id="openingDetailCol"></div>
+        </div>
+      `;
+      c.appendChild(wrap);
 
-      const search = document.createElement('input');
-      search.className = 'input';
-      search.placeholder = '🔍 Rechercher une ouverture…';
-      search.id = 'openingsSearch';
-      listCol.appendChild(search);
+      this.searchEl = wrap.querySelector('#openingsSearch');
+      this.listEl = wrap.querySelector('#openingsList');
+      this.detailEl = wrap.querySelector('#openingDetailCol');
 
-      const list = document.createElement('div');
-      list.className = 'opening-list card';
-      list.style.marginTop = '10px';
-      list.id = 'openingsList';
-      listCol.appendChild(list);
+      // Filter buttons
+      wrap.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.currentFilter = btn.dataset.filter;
+          wrap.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('btn-cta'));
+          btn.classList.add('btn-cta');
+          this._renderList(this.searchEl.value);
+        });
+      });
 
-      this.searchEl = search;
-      this.listEl = list;
-
-      search.addEventListener('input', () => this._renderList(search.value));
-
-      // Détail
-      const detailCol = document.createElement('div');
-      detailCol.className = 'puzzle-panel';
-      layout.appendChild(detailCol);
-      this.detailEl = detailCol;
+      this.searchEl.addEventListener('input', () => this._renderList(this.searchEl.value));
 
       this._renderList('');
       this._renderDetail(this.openings[0]);
     },
 
     _renderList(query) {
-      query = (query || '').toLowerCase();
+      query = (query || '').toLowerCase().trim();
       const list = this.listEl;
       list.innerHTML = '';
-      const filtered = this.openings.filter(o =>
-        !query ||
-        o.name.toLowerCase().includes(query) ||
-        o.eco.toLowerCase().includes(query) ||
-        (o.moves.join(' ').toLowerCase().includes(query)) ||
-        (o.ideas && o.ideas.toLowerCase().includes(query))
-      );
+
+      let filtered = this.openings.filter(o => {
+        // Filtre catégorie
+        if (this.currentFilter === 'e4' && o.moves[0] !== 'e4') return false;
+        if (this.currentFilter === 'd4' && o.moves[0] !== 'd4') return false;
+        if (this.currentFilter === 'flank' && o.moves[0] === 'e4' || (this.currentFilter === 'flank' && o.moves[0] === 'd4')) return false;
+
+        // Recherche texte
+        if (!query) return true;
+        return (
+          o.name.toLowerCase().includes(query) ||
+          o.eco.toLowerCase().includes(query) ||
+          o.moves.join(' ').toLowerCase().includes(query) ||
+          (o.ideas && o.ideas.toLowerCase().includes(query))
+        );
+      });
+
       if (!filtered.length) {
-        list.innerHTML = '<div class="text-muted center p-10">Aucune ouverture trouvée.</div>';
+        list.innerHTML = '<div class="text-muted center p-15">Aucune ouverture ne correspond aux critères.</div>';
         return;
       }
+
       filtered.forEach(o => {
+        const wr = o.winRate || { w: 40, d: 35, b: 25 };
         const item = document.createElement('div');
         item.className = 'opening-item' + (this.active && this.active.eco === o.eco && this.active.name === o.name ? ' active' : '');
         item.innerHTML = `
-          <div><b>${o.eco}</b> · ${o.name} <span class="badge badge-blue" style="margin-left:6px">${o.side}</span></div>
-          <div class="op-eco">${o.moves.length} coups · Difficulté ${'★'.repeat(o.difficulty)}${'☆'.repeat(Math.max(0, 3 - o.difficulty))}</div>
-          <div class="op-moves">${o.moves.join(' ')}</div>
+          <div class="flex justify-between items-center mb-5">
+            <div><b>${o.eco}</b> · <span>${o.name}</span></div>
+            <span class="badge badge-blue" style="font-size:11px">${o.side}</span>
+          </div>
+          <div class="op-moves mb-5">${o.moves.join(' ')}</div>
+          <!-- Barre de statistiques Chess.com -->
+          <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:#333;margin-top:4px" title="Blancs ${wr.w}% | Nulles ${wr.d}% | Noirs ${wr.b}%">
+            <div style="width:${wr.w}%;background:#ffffff;height:100%"></div>
+            <div style="width:${wr.d}%;background:#888888;height:100%"></div>
+            <div style="width:${wr.b}%;background:#272522;height:100%"></div>
+          </div>
+          <div class="flex justify-between text-muted mt-5" style="font-size:10px">
+            <span>⚪ ${wr.w}%</span>
+            <span>⚪/⚫ ${wr.d}%</span>
+            <span>⚫ ${wr.b}%</span>
+          </div>
         `;
         item.addEventListener('click', () => {
           this.active = o;
@@ -103,30 +131,47 @@
       if (!o) { d.innerHTML = '<div class="card center text-muted">Sélectionnez une ouverture.</div>'; return; }
       d.innerHTML = '';
 
+      const wr = o.winRate || { w: 40, d: 35, b: 25 };
+
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        <div class="flex justify-between items-start mb-15">
+        <div class="flex justify-between items-start mb-15 flex-wrap gap-10">
           <div>
             <h2 class="mb-5">${o.eco} — ${o.name}</h2>
-            <div><span class="badge badge-blue">${o.side}</span> <span class="badge badge-gold">Difficulté ${o.difficulty}/3</span></div>
+            <div class="flex gap-8 items-center flex-wrap">
+              <span class="badge badge-blue">${o.side}</span>
+              <span class="badge badge-gold">Difficulté ${o.difficulty}/3</span>
+              <span class="badge badge-green">${o.moves.length} coups</span>
+            </div>
           </div>
-          <button class="btn btn-cta" id="btnStartPractice">♟ Pratiquer l'ouverture</button>
+          <button class="btn btn-cta" id="btnStartPractice">♟ S'entraîner à cette ouverture</button>
+        </div>
+
+        <!-- Taux de victoire Explorer -->
+        <div class="mb-15 p-10 card" style="background:var(--bg-secondary);border:1px solid var(--border)">
+          <div class="flex justify-between text-secondary mb-5" style="font-size:12px">
+            <span>Statistiques Master & Parties En Ligne :</span>
+            <b>${wr.w}% Blancs · ${wr.d}% Nulles · ${wr.b}% Noirs</b>
+          </div>
+          <div style="display:flex;height:10px;border-radius:4px;overflow:hidden;background:#333">
+            <div style="width:${wr.w}%;background:#ffffff;height:100%" title="Victoires Blancs : ${wr.w}%"></div>
+            <div style="width:${wr.d}%;background:#888888;height:100%" title="Parties Nulles : ${wr.d}%"></div>
+            <div style="width:${wr.b}%;background:#1b1917;height:100%" title="Victoires Noirs : ${wr.b}%"></div>
+          </div>
         </div>
         
-        <div class="divider"></div>
-        
         <div class="opening-explorer-view">
-          <div class="controller" style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-            <button class="btn btn-sm" id="opPrev">◀</button>
+          <div class="controller flex gap-8 items-center mb-10">
+            <button class="btn btn-sm" id="opPrev">◀ Coup Précédent</button>
             <span class="badge" id="opStep">0/${o.moves.length}</span>
-            <button class="btn btn-sm" id="opNext">▶</button>
-            <button class="btn btn-sm" id="opAll">Tout</button>
+            <button class="btn btn-sm" id="opNext">Coup Suivant ▶</button>
+            <button class="btn btn-sm" id="opAll">Ligne Complète</button>
           </div>
-          <div id="opBoard"></div>
-          <div class="divider"></div>
-          <h3>💡 Idée stratégique</h3>
-          <p class="text-secondary mt-10" style="font-size:14px">${o.ideas}</p>
+          <div id="opBoard" style="max-width:380px;margin:0 auto"></div>
+          <div class="divider my-15"></div>
+          <h3>💡 Idées Stratégiques & Plans de Jeu</h3>
+          <p class="text-secondary mt-10" style="font-size:14px;line-height:1.6">${o.ideas}</p>
         </div>
       `;
       d.appendChild(card);
@@ -136,7 +181,7 @@
         container: document.getElementById('opBoard'),
         chess: new Chess(),
         interactive: false,
-        orientation: 'w'
+        orientation: o.side === 'Noirs' ? 'b' : 'w'
       });
       let step = 0;
       const setStep = (s) => {

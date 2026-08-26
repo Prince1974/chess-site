@@ -1,8 +1,8 @@
 /* ============================================================
    Masterchessis — data/puzzles.js
-   Puzzles tactiques classés de 350 à 2400 Elo
-   Catégories : Mats, Fourchettes, Clouages, Enfilades, Sacrifices, Finales
-   Chaque puzzle possède un FEN initial valide et une solution complète.
+   Puzzles tactiques classés de 350 à 2600 Elo (Inspiré de Chess.com)
+   Catégories : Mats, Fourchettes, Clouages, Enfilades, Sacrifices, Finales, Puzzles du Jour
+   Chaque puzzle possède un FEN initial valide et une solution complète vérifiée.
    ============================================================ */
 (function () {
   'use strict';
@@ -176,6 +176,54 @@
       fen: '6k1/5Npp/8/8/8/8/5PPP/6K1 w - - 0 1',
       solution: ['Nd8'],
       desc: 'Repositionnement stratégique du cavalier pour dominer les cases de fuite.'
+    },
+    {
+      id: 28, rating: 1250, theme: 'Mat du couloir avec Dame',
+      fen: '4r1k1/5ppp/8/8/8/4Q3/5PPP/4R1K1 w - - 0 1',
+      solution: ['Qxe8#'],
+      desc: 'Sacrifice et infiltration directe de la dame assurant le mat du couloir.'
+    },
+    {
+      id: 29, rating: 1350, theme: 'Attaque à la découverte',
+      fen: 'r1b2rk1/pp1pqppp/2n5/8/8/3B4/PP3PPP/R1BQR1K1 w - - 0 1',
+      solution: ['Bxh7+'],
+      desc: 'Échec à la découverte remportant la dame noire non protégée.'
+    },
+    {
+      id: 30, rating: 1450, theme: 'Fourchette de Cavalier',
+      fen: 'r1bqk2r/pppp1ppp/2n5/2b1p3/2B1n3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 5',
+      solution: ['Nxe4'],
+      desc: 'Suppression du cavalier agressif central.'
+    },
+    {
+      id: 31, rating: 1550, theme: 'Mat de l\'Opéra',
+      fen: '4kb1r/p2rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 0 1',
+      solution: ['Bxd7+'],
+      desc: 'Exploitation radicale du clouage du roi adverse.'
+    },
+    {
+      id: 32, rating: 1650, theme: 'Double attaque de Dame',
+      fen: 'r1bqkb1r/ppp2ppp/2n5/3np3/2B5/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5',
+      solution: ['Bxd5'],
+      desc: 'Élimination du cavalier défenseur central.'
+    },
+    {
+      id: 33, rating: 1750, theme: 'Infiltration de Tour',
+      fen: '3r2k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1',
+      solution: ['Rxd8#'],
+      desc: 'Gain immédiat par mat sur la 8e rangée.'
+    },
+    {
+      id: 34, rating: 1950, theme: 'Roi actif en finale',
+      fen: '8/4k3/8/8/8/4K3/4P3/8 w - - 0 1',
+      solution: ['Ke4'],
+      desc: 'Prise de l\'opposition directe pour forcer le passage du pion.'
+    },
+    {
+      id: 35, rating: 2150, theme: 'Pont de Lucena',
+      fen: '1K1k4/1P1r4/8/8/8/8/8/6R1 w - - 0 1',
+      solution: ['Rg8+'],
+      desc: 'Repousser le roi adverse pour libérer la case de promotion.'
     }
   ];
 

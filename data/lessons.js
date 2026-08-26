@@ -8,6 +8,7 @@
   'use strict';
 
   const LESSONS = [
+    // ==================== NIVEAU 1 : DÉBUTANT (BASES) ====================
     {
       id: 1, icon: '♟', level: 'Débutant', title: 'Le déplacement des pièces',
       estTime: 5, category: 'Bases', xp: 50, badge: '♟ Pionnier',
@@ -103,7 +104,56 @@
       ]
     },
     {
-      id: 4, icon: '🍴', level: 'Intermédiaire', title: 'La fourchette royale',
+      id: 4, icon: '♟️', level: 'Débutant', title: 'La Prise en Passant',
+      estTime: 6, category: 'Bases', xp: 65, badge: '⚡ Prise Éclair',
+      summary: 'Maîtrisez la règle spéciale du pion pour capturer un pion adverse qui avance de deux cases.',
+      steps: [
+        {
+          title: '1. Capturer en passant',
+          coach: 'Le pion noir vient d\'avancer de d7 en d5 à côté de votre pion en e5. Capturez-le en diagonale en d6 !',
+          fen: 'rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2',
+          turn: 'w',
+          solution: ['exd6'],
+          hint: 'Jouez votre pion de e5 vers d6 pour éliminer le pion d5.',
+          successMsg: 'Exactement ! C\'est la prise en passant : le pion capture comme si le pion noir n\'avait avancé que d\'une case.'
+        }
+      ],
+      sections: [
+        { h: 'Règle de la prise en passant', p: 'Elle ne peut être effectuée qu\'immédiatement au coup suivant la poussée de 2 cases du pion adverse.' }
+      ]
+    },
+    {
+      id: 5, icon: '🏛️', level: 'Débutant', title: 'Le Système de Londres',
+      estTime: 8, category: 'Ouvertures', xp: 80, badge: '🏛️ Bâtisseur',
+      summary: 'Une ouverture solide et facile à jouer pour débuter avec les Blancs contre tout schéma.',
+      steps: [
+        {
+          title: '1. Développer le fou de cases claires en f4',
+          coach: 'Après 1.d4 d5, sortez immédiatement votre fou en f4 avant de fermer la chaîne de pions avec e3 !',
+          fen: 'rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2',
+          turn: 'w',
+          solution: ['Bf4'],
+          hint: 'Sortez votre fou de c1 vers f4.',
+          successMsg: 'Parfait ! C\'est la signature du Système de Londres, assurant un contrôle actif du centre.'
+        },
+        {
+          title: '2. Consolider le centre avec e3',
+          coach: 'Maintenant que le fou est développé hors de la chaîne de pions, jouez e3 pour soutenir le pion d4.',
+          fen: 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 1 3',
+          turn: 'w',
+          solution: ['e3'],
+          hint: 'Avancez le pion e2 en e3.',
+          successMsg: 'Structure de pyramide solide ! Vos pions protègent le centre et préparent le développement du fou f1.'
+        }
+      ],
+      sections: [
+        { h: 'Le Londres', p: 'Très populaire car les Blancs développent leurs pièces sur des cases naturelles de façon très solide, peu importe les coups des Noirs.' }
+      ]
+    },
+
+    // ==================== NIVEAU 2 : INTERMÉDIAIRE (TACTIQUES) ====================
+    {
+      id: 6, icon: '🍴', level: 'Intermédiaire', title: 'La fourchette royale',
       estTime: 8, category: 'Tactique', xp: 85, badge: '🍴 Tacticien Fourchette',
       summary: 'Attaquez deux pièces majeures simultanément avec le cavalier.',
       steps: [
@@ -131,18 +181,18 @@
       ]
     },
     {
-      id: 5, icon: '📌', level: 'Intermédiaire', title: 'Le clouage et l\'enfilade',
+      id: 7, icon: '📌', level: 'Intermédiaire', title: 'Le clouage et l\'enfilade',
       estTime: 8, category: 'Tactique', xp: 90, badge: '📌 Maître du Clouage',
       summary: 'Paralyser les pièces adverses en les clouant contre le roi ou la dame.',
       steps: [
         {
           title: '1. Clouage absolu avec le fou',
-          coach: 'Clouez le cavalier adverse contre son roi avec votre fou en b5 !',
-          fen: 'r1bqk1nr/pppp1ppp/2n5/4p3/1bB1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4',
+          coach: 'Clouez le cavalier c6 contre le roi noir avec votre fou en b5 !',
+          fen: 'r1bqk1nr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
           turn: 'w',
-          solution: ['O-O'],
-          hint: 'Mettez votre roi à l\'abri.',
-          successMsg: 'Excellent timing de roque pour préparer l\'offensive sur la colonne centrale.'
+          solution: ['Bb5'],
+          hint: 'Déplacez le fou f1 vers b5.',
+          successMsg: 'Le cavalier noir ne peut plus bouger sous peine de mettre son roi en échec illégal !'
         },
         {
           title: '2. Enfilade mortelle sur la rangée',
@@ -159,8 +209,8 @@
       ]
     },
     {
-      id: 6, icon: '🚪', level: 'Intermédiaire', title: 'Le mat du couloir',
-      estTime: 7, category: 'Finales', xp: 80, badge: '🚪 Gardien du Couloir',
+      id: 8, icon: '🚪', level: 'Intermédiaire', title: 'Le mat du couloir',
+      estTime: 7, category: 'Tactique', xp: 80, badge: '🚪 Gardien du Couloir',
       summary: 'Exploitez les pions qui emprisonnent leur propre roi sur la 8e rangée.',
       steps: [
         {
@@ -173,13 +223,13 @@
           successMsg: 'Échec et mat ! C\'est le mat du couloir : le roi n\'a aucune case de fuite (luft).'
         },
         {
-          title: '2. Créer une fenêtre d\'aération (Luft)',
-          coach: 'Évitez le mat du couloir dans votre propre camp en créant une case de fuite avec h3 !',
+          title: '2. Éliminer la tour et mater',
+          coach: 'Capturez la tour noire sur la 8e rangée pour porter le coup de grâce !',
           fen: '4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1',
           turn: 'w',
           solution: ['Rxe8#'],
           hint: 'Capturez la tour noire en e8.',
-          successMsg: 'Mat du couloir inversé ! Vous avez éliminé la menace avant l\'adversaire.'
+          successMsg: 'Mat du couloir exécuté avec précision !'
         }
       ],
       sections: [
@@ -187,7 +237,56 @@
       ]
     },
     {
-      id: 7, icon: '🔥', level: 'Avancé', title: 'Le sacrifice de fou en h7',
+      id: 9, icon: '🔍', level: 'Intermédiaire', title: 'L\'Attaque à la Découverte',
+      estTime: 8, category: 'Tactique', xp: 95, badge: '🔍 Œil de Lynx',
+      summary: 'Déplacez une pièce pour révéler l\'attaque masquée d\'une autre.',
+      steps: [
+        {
+          title: '1. Révéler l\'attaque de la tour avec échec',
+          coach: 'Votre fou bloque la tour e1 qui vise la dame e7. Jouez Bxh7+ pour faire échec et gagner la dame !',
+          fen: 'r1b2rk1/pp1pqppp/2n5/8/8/1B1B4/PP3PPP/R1BQR1K1 w - - 0 1',
+          turn: 'w',
+          solution: ['Bxh7+'],
+          hint: 'Prenez le pion h7 avec le fou d3 avec échec.',
+          successMsg: 'Génie ! En faisant échec en h7, vous forcez le roi à réagir pendant que votre tour e1 capture la dame au coup suivant.'
+        }
+      ],
+      sections: [
+        { h: 'Attaque à la découverte', p: 'Une arme dévastatrice car la pièce qui bouge crée une menace directe (comme un échec) pendant que la pièce révélée attaque une autre cible.' }
+      ]
+    },
+    {
+      id: 10, icon: '🛡️', level: 'Intermédiaire', title: 'La Défense Sicilienne',
+      estTime: 10, category: 'Ouvertures', xp: 100, badge: '🛡️ Sicilien',
+      summary: 'Apprenez l\'ouverture la plus agressive pour les Noirs contre 1.e4.',
+      steps: [
+        {
+          title: '1. Répondre à e4 par c5',
+          coach: 'Les Blancs jouent e4. Répondez par c5 pour créer une lutte asymétrique dynamique !',
+          fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+          turn: 'b',
+          solution: ['c5'],
+          hint: 'Avancez votre pion c7 de deux cases en c5.',
+          successMsg: 'Parfait ! C\'est le début de la Sicilienne. Vous contestez le centre depuis l\'aile dame.'
+        },
+        {
+          title: '2. Jouer d6 pour préparer le développement',
+          coach: 'Préparez la variante Najdorf en jouant d6 pour contrôler e5 et libérer vos pièces.',
+          fen: 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
+          turn: 'b',
+          solution: ['d6'],
+          hint: 'Jouez votre pion d7 en d6.',
+          successMsg: 'Excellent. Vous préparez le développement de votre fou et empêchez e5.'
+        }
+      ],
+      sections: [
+        { h: 'Pourquoi la Sicilienne ?', p: 'Elle permet de lutter pour le gain avec les Noirs en créant un déséquilibre immédiat.' }
+      ]
+    },
+
+    // ==================== NIVEAU 3 : AVANCÉ (STRATÉGIE & FINALES) ====================
+    {
+      id: 11, icon: '🔥', level: 'Avancé', title: 'Le sacrifice de fou en h7',
       estTime: 10, category: 'Attaque', xp: 120, badge: '🔥 Attaquant d\'Élite',
       summary: 'L\'attaque grecque classique : démolir le roque adverse par un sacrifice spectaculaire.',
       steps: [
@@ -202,7 +301,7 @@
         },
         {
           title: '2. Lancer l\'assaut avec Dame et Cavalier',
-          coach: 'Après Bxh7+ Kxh7, sautez en g5 avec échec pour faire entrer la dame !',
+          coach: 'Après Bxh7+ Kxh7, sautez en g5 avec échec pour faire entrer la dame en h5 !',
           fen: 'r1bq1r2/pppp1ppk/2n2n2/2b1P3/8/5N2/PPPP1PPP/R1BQ1RK1 w - - 0 2',
           turn: 'w',
           solution: ['Ng5+'],
@@ -215,7 +314,26 @@
       ]
     },
     {
-      id: 8, icon: '♟️', level: 'Avancé', title: 'Finale de pions & Promotion',
+      id: 12, icon: '⚖️', level: 'Avancé', title: 'L\'opposition des rois',
+      estTime: 10, category: 'Finales', xp: 120, badge: '⚖️ Maître de l\'Opposition',
+      summary: 'Maîtrisez la technique essentielle pour promouvoir vos pions en finale de rois.',
+      steps: [
+        {
+          title: '1. Prendre l\'opposition directe',
+          coach: 'Le roi noir est en e7. Prenez l\'opposition en plaçant votre roi en e4 !',
+          fen: '8/4k3/8/8/8/4K3/4P3/8 w - - 0 1',
+          turn: 'w',
+          solution: ['Ke4'],
+          hint: 'Avancez votre roi blanc de e3 vers e4 en face du roi adverse.',
+          successMsg: 'Opposition directe prise ! Le roi noir doit maintenant s\'écarter et céder une case clé.'
+        }
+      ],
+      sections: [
+        { h: 'L\'opposition', p: 'Les rois se font face séparés par une seule case. Celui qui n\'a pas le trait détient l\'opposition et bloque le passage.' }
+      ]
+    },
+    {
+      id: 13, icon: '♟️', level: 'Avancé', title: 'Finale de pions & Promotion',
       estTime: 9, category: 'Finales', xp: 110, badge: '👑 Roi de la Finale',
       summary: 'Maîtrisez la poussée des pions passés et l\'opposition du roi en fin de partie.',
       steps: [
@@ -243,35 +361,7 @@
       ]
     },
     {
-      id: 9, icon: '🛡️', level: 'Intermédiaire', title: 'La Défense Sicilienne',
-      estTime: 10, category: 'Ouvertures', xp: 100, badge: '🛡️ Sicilien',
-      summary: 'Apprenez l\'ouverture la plus populaire pour les Noirs contre 1.e4.',
-      steps: [
-        {
-          title: '1. Répondre à e4 par c5',
-          coach: 'Les Blancs jouent e4. Répondez par c5 pour créer une lutte asymétrique !',
-          fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
-          turn: 'b',
-          solution: ['c5'],
-          hint: 'Avancez votre pion c7 de deux cases.',
-          successMsg: 'Parfait ! C\'est le début de la Sicilienne. Vous contrôlez la case d4 depuis le flanc.'
-        },
-        {
-          title: '2. Développer le cavalier d6',
-          coach: 'Préparez la variante Najdorf en jouant d6 pour libérer vos pièces et contrôler le centre.',
-          fen: 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
-          turn: 'b',
-          solution: ['d6'],
-          hint: 'Jouez votre pion d7 en d6.',
-          successMsg: 'Excellent. Vous préparez le développement de votre fou et maintenez la tension.'
-        }
-      ],
-      sections: [
-        { h: 'Pourquoi la Sicilienne ?', p: 'Elle permet de lutter pour la victoire avec les Noirs en évitant les symétries précoces.' }
-      ]
-    },
-    {
-      id: 10, icon: '🎯', level: 'Avancé', title: 'Avant-postes & Cavaliers',
+      id: 14, icon: '🎯', level: 'Avancé', title: 'Avant-postes & Cavaliers',
       estTime: 12, category: 'Stratégie', xp: 130, badge: '🎯 Stratège d\'Élite',
       summary: 'Apprenez à installer vos cavaliers sur des cases inexpugnables au cœur du camp adverse.',
       steps: [
@@ -281,7 +371,7 @@
           fen: 'r1bqk2r/pp2bppp/2nppn2/8/3NP3/2N5/PPP1BPPP/R1BQ1RK1 w kq - 0 8',
           turn: 'w',
           solution: ['Nd5'],
-          hint: 'Utilisez le cavalier d4 pour viser d5.',
+          hint: 'Utilisez le cavalier c3 pour bondir en d5.',
           successMsg: 'Bien joué ! En d5, le cavalier devient une pièce monstrueuse que l\'adversaire aura du mal à chasser.'
         }
       ],
@@ -290,102 +380,45 @@
       ]
     },
     {
-      id: 11, icon: '🗼', level: 'Débutant', title: 'Mat avec la Tour',
-      estTime: 8, category: 'Finales', xp: 90, badge: '🗼 Finisseur au Sommet',
-      summary: 'Maîtrisez la technique fondamentale pour mater avec une seule tour contre un roi dépouillé.',
+      id: 15, icon: '🗼', level: 'Avancé', title: 'La Position de Lucena (Finale de Tours)',
+      estTime: 12, category: 'Finales', xp: 150, badge: '🗼 Maître de Lucena',
+      summary: 'La méthode universelle pour gagner une finale tour et pion sur la 7e rangée en construisant un pont.',
       steps: [
         {
-          title: '1. Repousser le roi sur la bande',
-          coach: 'Utilisez votre tour pour couper le roi adverse. Amenez-le vers le bord de l\'échiquier !',
-          fen: '4k3/8/8/8/8/8/4R3/4K3 w - - 0 1',
+          title: '1. Écarter le roi adverse avec un échec',
+          coach: 'Donnez échec avec votre tour en g1 pour forcer le roi noir sur la colonne h !',
+          fen: '1K1k4/1P1r4/8/8/8/8/8/6R1 w - - 0 1',
           turn: 'w',
-          solution: ['Re5+'],
-          hint: 'Donnez un échec pour forcer le roi à reculer vers la 6e rangée.',
-          successMsg: 'Parfait. La tour agit comme une barrière infranchissable.'
+          solution: ['Rg8+'],
+          hint: 'Montez votre tour en g8 avec échec.',
+          successMsg: 'Parfait ! Le roi noir est repoussé et votre roi pourra sortir en toute sécurité pour abriter le pion.'
         }
       ],
       sections: [
-        { h: 'La méthode de la boîte', p: 'Réduisez progressivement l\'espace du roi adverse avec votre tour et votre roi.' }
+        { h: 'Le pont de Lucena', p: 'On place la tour sur la 4e rangée afin qu\'elle serve de bouclier contre les échecs de la tour ennemie.' }
       ]
     },
     {
-      id: 12, icon: '🧲', level: 'Avancé', title: 'Le Sacrifice d\'Attraction',
-      estTime: 10, category: 'Tactique', xp: 140, badge: '🧲 Magnétiseur',
-      summary: 'Forcez une pièce adverse (souvent le roi) à se déplacer sur une case fatale par un sacrifice.',
+      id: 16, icon: '🎭', level: 'Avancé', title: 'Partie Légendaire : L\'Opéra de Morphy',
+      estTime: 12, category: 'Grands Maîtres', xp: 160, badge: '🎭 Virtuose Morphy',
+      summary: 'Revivez le chef-d\'œuvre absolu de Paul Morphy à l\'Opéra de Paris en 1858.',
       steps: [
         {
-          title: '1. Attirer le roi en h7',
-          coach: 'Sacrifiez votre dame pour forcer le roi à se placer sur une trajectoire de mat !',
-          fen: 'r1b2rk1/pp1p1ppp/2n1p3/q7/2P5/2PB4/P2Q1PPP/R3K2R w KQ - 0 1',
+          title: '1. Le sacrifice de dame décisif',
+          coach: 'Sacrifiez votre dame en b8 pour attirer le cavalier noir et ouvrir la voie au mat du couloir avec la tour !',
+          fen: '4kb1r/p2rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 0 1',
           turn: 'w',
-          solution: ['Bxh7+'],
-          hint: 'Utilisez votre fou en d3 pour attaquer h7.',
-          successMsg: 'Magnifique ! Le roi est attiré hors de son abri. L\'attaque peut maintenant se conclure.'
+          solution: ['Bxd7+'],
+          hint: 'Prenez la tour en d7 avec votre fou avec échec.',
+          successMsg: 'Sublime ! Le clouage absolu détruit toute la défense noire.'
         }
       ],
       sections: [
-        { h: 'Principe de l\'attraction', p: 'On sacrifie du matériel pour forcer une pièce ennemie sur une case où elle sera vulnérable à une fourchette, un clouage ou un mat.' }
-      ]
-    },
-    {
-      id: 13, icon: '🔍', level: 'Intermédiaire', title: 'L\'Attaque à la Découverte',
-      estTime: 8, category: 'Tactique', xp: 95, badge: '🔍 Œil de Lynx',
-      summary: 'Déplacez une pièce pour révéler l\'attaque masquée d\'une autre.',
-      steps: [
-        {
-          title: '1. Révéler l\'attaque de la tour',
-          coach: 'Votre fou bloque le rayon d\'action de votre tour sur la dame adverse. Déplacez le fou en h7 pour faire échec tout en attaquant la dame !',
-          fen: '3r2k1/pp3ppp/2n5/3q4/8/1B1b4/PP3PPP/R1Q1R1K1 w - - 0 1',
-          turn: 'w',
-          solution: ['Bxd5'],
-          hint: 'Prenez le fou en d3 avec votre fou b3, libérant l\'attaque de la tour e1 sur la dame d5 !',
-          successMsg: 'Génie ! En prenant le fou, vous gagnez la dame adverse car elle est attaquée par la tour e1 pendant que le fou fait échec.'
-        }
-      ],
-      sections: [
-        { h: 'Attaque à la découverte', p: 'Une arme dévastatrice car la pièce qui bouge crée une menace directe (comme un échec) pendant que la pièce révélée attaque une autre cible.' }
-      ]
-    },
-    {
-      id: 14, icon: '⚖️', level: 'Avancé', title: 'L\'opposition des rois',
-      estTime: 12, category: 'Finales', xp: 120, badge: '⚖️ Maître de l\'Opposition',
-      summary: 'Maîtrisez la technique essentielle pour promouvoir vos pions en finale.',
-      steps: [
-        {
-          title: '1. Bloquer le roi noir',
-          coach: 'Pour pousser votre pion e, vous devez d\'abord forcer le roi adverse à reculer. Prenez l\'opposition en plaçant votre roi en e5 !',
-          fen: '8/4k3/8/4P3/4K3/8/8/8 w - - 0 1',
-          turn: 'w',
-          solution: ['Ke4'],
-          hint: 'Amenez votre roi directement en face du roi adverse sur la colonne e.',
-          successMsg: 'Excellent ! C\'est l\'opposition directe. Le roi noir doit maintenant s\'écarter, vous permettant d\'avancer.'
-        }
-      ],
-      sections: [
-        { h: 'L\'opposition', p: 'Les rois se font face séparés par une seule case. Celui qui n\'a pas à jouer détient l\'opposition et contrôle l\'accès.' }
-      ]
-    },
-    {
-      id: 15, icon: '🏛️', level: 'Débutant', title: 'Le Système de Londres',
-      estTime: 10, category: 'Ouvertures', xp: 80, badge: '🏛️ Bâtisseur',
-      summary: 'Une ouverture solide et facile à jouer pour débuter avec les Blancs.',
-      steps: [
-        {
-          title: '1. Développer le fou de cases claires',
-          coach: 'Après 1.d4, au lieu de jouer c4, développez rapidement votre fou en f4 pour créer un système solide !',
-          fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1',
-          turn: 'w',
-          solution: ['Bf4'],
-          hint: 'Sortez votre fou de c1 vers f4.',
-          successMsg: 'Parfait ! C\'est la marque de fabrique du Système de Londres, un fou actif hors de la chaîne de pions.'
-        }
-      ],
-      sections: [
-        { h: 'Le Londres', p: 'Très populaire car les Blancs développent leurs pièces sur des cases naturelles de façon très solide, peu importe les coups des Noirs.' }
+        { h: 'L\'Opéra de Morphy', p: 'Une démonstration magistrale de développement rapide et d\'attaque sur le roi au centre.' }
       ]
     }
   ];
 
-
   window.ChessLessons = window.LESSONS = LESSONS;
 })();
+

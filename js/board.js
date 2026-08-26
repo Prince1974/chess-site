@@ -28,6 +28,11 @@
       this.checkSquare = null;
       this.pendingPromotion = null;
 
+      // --- Flèches & Surlignages (Clic droit style Chess.com) ---
+      this.markedSquares = new Set();
+      this.arrows = [];
+      this.rightClickFrom = null;
+
       // --- État du drag & drop ---
       this.dragging = false;
       this.dragData = null; // { from, piece, color, type, element, clone }
@@ -45,6 +50,7 @@
       this.container.innerHTML = '';
       const wrap = document.createElement('div');
       wrap.className = 'board';
+      wrap.style.position = 'relative';
       this.boardEl = wrap;
       this.container.appendChild(wrap);
       this.squares = {};
@@ -76,6 +82,29 @@
           this.squares[sq] = cell;
         }
       }
+
+      // SVG Overlay pour flèches et surlignages
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'board-svg-layer');
+      svg.style.position = 'absolute';
+      svg.style.top = '0';
+      svg.style.left = '0';
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+      svg.style.pointerEvents = 'none';
+      svg.style.zIndex = '15';
+      svg.innerHTML = `
+        <defs>
+          <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+            <polygon points="0 0, 6 3, 0 6" fill="rgba(235, 97, 80, 0.85)" />
+          </marker>
+          <marker id="arrowhead-green" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+            <polygon points="0 0, 6 3, 0 6" fill="rgba(129, 182, 76, 0.85)" />
+          </marker>
+        </defs>
+      `;
+      wrap.appendChild(svg);
+      this.svgEl = svg;
     }
 
     setChess(chess) {
@@ -113,6 +142,9 @@
 
     // ---- Événements souris et tactiles ----
     _attachEvents() {
+      // Désactiver le menu contextuel par défaut pour permettre le dessin au clic droit
+      this.container.addEventListener('contextmenu', (e) => e.preventDefault());
+
       // Clic (conservé pour rétrocompatibilité)
       this.container.addEventListener('click', (e) => {
         const cell = e.target.closest('.square');
@@ -123,12 +155,53 @@
         this._handleClick(sq);
       });
 
-      // Événements de souris pour le drag
+      // Événements de souris pour le drag & le dessin au clic droit
       this.container.addEventListener('mousedown', (e) => {
         const cell = e.target.closest('.square');
         if (!cell) return;
         const sq = cell.dataset.square;
-        this._onPointerDown(e, sq, 'mouse');
+
+        if (e.button === 2) {
+          // Clic droit : Début du tracé de flèche ou surlignage
+          this.rightClickFrom = sq;
+          e.preventDefault();
+          return;
+        }
+
+        if (e.button === 0) {
+          // Clic gauche : Effacer les dessins si présents
+          if (this.markedSquares.size > 0 || this.arrows.length > 0) {
+            this.clearDrawings();
+          }
+          this._onPointerDown(e, sq, 'mouse');
+        }
+      });
+
+      // Relâchement du clic droit pour finaliser le dessin
+      document.addEventListener('mouseup', (e) => {
+        if (e.button === 2 && this.rightClickFrom) {
+          const target = document.elementFromPoint(e.clientX, e.clientY);
+          const cell = target?.closest('.square');
+          if (cell) {
+            const to = cell.dataset.square;
+            if (this.rightClickFrom === to) {
+              // Case identique : toggle surlignage
+              if (this.markedSquares.has(to)) this.markedSquares.delete(to);
+              else this.markedSquares.add(to);
+            } else {
+              // Case différente : toggle flèche
+              const idx = this.arrows.findIndex(a => a.from === this.rightClickFrom && a.to === to);
+              if (idx >= 0) this.arrows.splice(idx, 1);
+              else this.arrows.push({ from: this.rightClickFrom, to });
+            }
+            this._renderDrawings();
+          }
+          this.rightClickFrom = null;
+        }
+
+        if (this.dragging) {
+          this._onPointerUp(e.clientX, e.clientY);
+        }
       });
 
       // Mouvement de la souris (suivi du ghost)
@@ -136,11 +209,6 @@
         if (!this.dragging) return;
         e.preventDefault();
         this._onPointerMove(e.clientX, e.clientY);
-      });
-
-      document.addEventListener('mouseup', (e) => {
-        if (!this.dragging) return;
-        this._onPointerUp(e.clientX, e.clientY);
       });
 
       // Événements tactiles
@@ -466,10 +534,72 @@
       setTimeout(() => cell.classList.remove('flash-error'), 350);
     }
 
+    clearDrawings() {
+      this.markedSquares.clear();
+      this.arrows = [];
+      this._renderDrawings();
+    }
+
+    _renderDrawings() {
+      if (!this.svgEl || !this.boardEl) return;
+      const bRect = this.boardEl.getBoundingClientRect();
+      if (bRect.width === 0 || bRect.height === 0) return;
+
+      const defs = `
+        <defs>
+          <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+            <polygon points="0 0, 6 3, 0 6" fill="rgba(235, 97, 80, 0.85)" />
+          </marker>
+        </defs>
+      `;
+
+      let svgContent = defs;
+
+      // 1. Dessiner les surlignages de case
+      this.markedSquares.forEach(sq => {
+        const cell = this.squares[sq];
+        if (!cell) return;
+        const cRect = cell.getBoundingClientRect();
+        const x = cRect.left - bRect.left;
+        const y = cRect.top - bRect.top;
+        svgContent += `<rect x="${x}" y="${y}" width="${cRect.width}" height="${cRect.height}" fill="rgba(235, 97, 80, 0.45)" rx="4" />`;
+      });
+
+      // 2. Dessiner les flèches
+      this.arrows.forEach(a => {
+        const fromCell = this.squares[a.from];
+        const toCell = this.squares[a.to];
+        if (!fromCell || !toCell) return;
+
+        const fRect = fromCell.getBoundingClientRect();
+        const tRect = toCell.getBoundingClientRect();
+
+        const x1 = (fRect.left + fRect.right) / 2 - bRect.left;
+        const y1 = (fRect.top + fRect.bottom) / 2 - bRect.top;
+        const x2 = (tRect.left + tRect.right) / 2 - bRect.left;
+        const y2 = (tRect.top + tRect.bottom) / 2 - bRect.top;
+
+        // Raccourcir légèrement pour laisser de la place à la tête de flèche
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) return;
+
+        const shorten = Math.min(15, dist * 0.15);
+        const targetX = x2 - (dx / dist) * shorten;
+        const targetY = y2 - (dy / dist) * shorten;
+
+        svgContent += `<line x1="${x1}" y1="${y1}" x2="${targetX}" y2="${targetY}" stroke="rgba(235, 97, 80, 0.85)" stroke-width="8" stroke-linecap="round" marker-end="url(#arrowhead)" />`;
+      });
+
+      this.svgEl.innerHTML = svgContent;
+    }
+
     resetBoard() {
       this.lastMove = null;
       this.checkSquare = null;
       this.clearSelection();
+      this.clearDrawings();
       this.render();
     }
   }

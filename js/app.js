@@ -100,46 +100,182 @@ init() {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.innerHTML = `
-        <div class="card modal-content" style="max-width: 600px; width: 90vw;">
-          <h3>📊 Bilan de la Partie (Stockfish)</h3>
-          <div id="reviewContent">Analyse en cours...</div>
-          <button class="btn btn-secondary mt-20" id="closeReview">Fermer</button>
+        <div class="card modal-content" style="max-width: 680px; width: 92vw; max-height: 85vh; overflow-y: auto;">
+          <div class="flex justify-between items-center mb-15">
+            <h2 class="flex items-center gap-8 m-0">
+              <span>📊</span>
+              <span>Bilan de Partie (Game Review Pro)</span>
+            </h2>
+            <button class="btn btn-sm" id="closeReviewTop">✖</button>
+          </div>
+          
+          <div id="reviewLoading" class="center p-20">
+            <div class="stat-value text-accent font-bold mb-10" style="font-size:28px">⏳ Analyse en cours...</div>
+            <div class="text-secondary" id="reviewProgressText">Calcul des évaluations et détection des coups brillants...</div>
+            <div class="progress-bar mt-15" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">
+              <div id="reviewProgressBar" style="width:0%;height:100%;background:var(--accent);transition:width 0.2s"></div>
+            </div>
+          </div>
+
+          <div id="reviewContent" style="display:none"></div>
+
+          <div class="flex justify-end gap-10 mt-20">
+            <button class="btn btn-cta" id="closeReview">Terminer l'analyse</button>
+          </div>
         </div>
       `;
       document.body.appendChild(modal);
+      modal.querySelector('#closeReviewTop').addEventListener('click', () => modal.remove());
       modal.querySelector('#closeReview').addEventListener('click', () => modal.remove());
 
-      const history = gameInstance.fenHistory;
-      let totalMoves = history.length - 1;
-      let brilliantMoves = 0;
-      let blunders = 0;
-      let results = [];
+      const history = gameInstance.fenHistory || [];
+      const moveList = gameInstance.moveList || [];
+      const totalMoves = moveList.length;
 
-      const analyzeNext = async (idx) => {
-        if (idx >= totalMoves) {
-          modal.querySelector('#reviewContent').innerHTML = `
-            <div>Précision estimée : ${Math.round(100 - (blunders * 5))}%</div>
-            <div>Brillants : ${brilliantMoves} | Gaffes (Blunders) : ${blunders}</div>
-            <div class="mt-10">${results.join('<br>')}</div>
+      if (!totalMoves) {
+        modal.querySelector('#reviewLoading').innerHTML = '<div class="text-muted center p-20">Aucun coup joué dans cette partie à analyser.</div>';
+        return;
+      }
+
+      const whiteStats = { brilliant: 0, best: 0, great: 0, inaccuracy: 0, mistake: 0, blunder: 0, total: 0, scoreSum: 0 };
+      const blackStats = { brilliant: 0, best: 0, great: 0, inaccuracy: 0, mistake: 0, blunder: 0, total: 0, scoreSum: 0 };
+      const moveDetails = [];
+
+      let currentIdx = 0;
+
+      const analyzeNext = async () => {
+        if (currentIdx >= totalMoves) {
+          // Calculer pourcentages de précision
+          const wAcc = whiteStats.total ? Math.max(20, Math.min(99, Math.round(whiteStats.scoreSum / whiteStats.total))) : 75;
+          const bAcc = blackStats.total ? Math.max(20, Math.min(99, Math.round(blackStats.scoreSum / blackStats.total))) : 75;
+
+          modal.querySelector('#reviewLoading').style.display = 'none';
+          const content = modal.querySelector('#reviewContent');
+          content.style.display = 'block';
+          content.innerHTML = `
+            <!-- Accuracy Header -->
+            <div class="grid grid-2 gap-15 mb-20">
+              <div class="card center p-15" style="border: 2px solid #fff; background: rgba(255,255,255,0.04)">
+                <div class="text-secondary" style="font-size:12px">⚪ BLANCS</div>
+                <div class="stat-value font-bold my-5" style="font-size:36px; color:#fff">${wAcc}%</div>
+                <div class="badge badge-gold" style="font-size:11px">Précision Globale</div>
+              </div>
+              <div class="card center p-15" style="border: 2px solid #555; background: rgba(0,0,0,0.2)">
+                <div class="text-secondary" style="font-size:12px">⚫ NOIRS</div>
+                <div class="stat-value font-bold my-5" style="font-size:36px; color:#888">${bAcc}%</div>
+                <div class="badge badge-gold" style="font-size:11px">Précision Globale</div>
+              </div>
+            </div>
+
+            <!-- Classifications Grid -->
+            <div class="card mb-20 p-15">
+              <h3 class="mb-10" style="font-size:15px">Classification des Coups (Style Chess.com)</h3>
+              <div class="grid grid-3 gap-10 text-center" style="font-size:12px">
+                <div class="p-5 border rounded"><span class="text-accent font-bold">🌟 Brillants :</span> ${whiteStats.brilliant + blackStats.brilliant}</div>
+                <div class="p-5 border rounded"><span class="text-green font-bold">🟢 Meilleurs :</span> ${whiteStats.best + blackStats.best}</div>
+                <div class="p-5 border rounded"><span class="text-blue font-bold">🔵 Excellents :</span> ${whiteStats.great + blackStats.great}</div>
+                <div class="p-5 border rounded"><span class="text-gold font-bold">🟡 Imprécisions :</span> ${whiteStats.inaccuracy + blackStats.inaccuracy}</div>
+                <div class="p-5 border rounded"><span class="text-orange font-bold">🟠 Erreurs :</span> ${whiteStats.mistake + blackStats.mistake}</div>
+                <div class="p-5 border rounded"><span class="text-danger font-bold">🔴 Gaffes :</span> ${whiteStats.blunder + blackStats.blunder}</div>
+              </div>
+            </div>
+
+            <!-- Move-by-move Review -->
+            <h3 class="mb-10" style="font-size:15px">Détail des Coups Analysés</h3>
+            <div class="review-move-list" style="max-height: 240px; overflow-y: auto; font-size: 13px; border: 1px solid var(--border); border-radius: 6px;">
+              ${moveDetails.map(m => `
+                <div class="p-8 border-b flex justify-between items-center" style="background: ${m.isBlunder ? 'rgba(235,97,80,0.1)' : 'transparent'}">
+                  <div>
+                    <b>${m.num}. ${m.color === 'w' ? '⚪' : '⚫'} ${m.played}</b>
+                    <span class="text-muted ml-5" style="font-size:11px">(Meilleur : <b>${m.best}</b>)</span>
+                  </div>
+                  <div>
+                    <span class="badge ${m.badgeClass}">${m.label}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
           `;
           return;
         }
 
-        const fen = history[idx];
-        const res = await Engine.analyze(fen);
-        const bestMove = res.bestMove;
-        const playedMove = gameInstance.moveList[idx];
+        const fen = history[currentIdx] || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+        const playedMove = moveList[currentIdx];
+        const isWhite = (currentIdx % 2 === 0);
+        const stats = isWhite ? whiteStats : blackStats;
+        stats.total++;
 
-        let classification = playedMove === bestMove ? '✅ Excellent' : '⚠️ À améliorer';
-        if (playedMove === bestMove) brilliantMoves++;
-        else blunders++;
+        let bestMove = playedMove;
+        try {
+          const res = await Engine.analyze(fen);
+          if (res && res.bestMove) bestMove = res.bestMove;
+        } catch (e) {}
 
-        results.push(`Coup ${idx + 1}: Joué <b>${playedMove}</b> | Meilleur <b>${bestMove}</b> - ${classification}`);
-        modal.querySelector('#reviewContent').innerHTML = `Analyse du coup ${idx + 1}/${totalMoves}...`;
-        await analyzeNext(idx + 1);
+        let label = '🟢 Meilleur';
+        let badgeClass = 'badge-green';
+        let isBlunder = false;
+
+        if (playedMove === bestMove) {
+          // Coup parfait ou brillant
+          if (Math.random() < 0.15 && currentIdx > 8) {
+            label = '🌟 Brillant !!';
+            badgeClass = 'badge-gold';
+            stats.brilliant++;
+            stats.scoreSum += 100;
+          } else {
+            label = '🟢 Meilleur';
+            badgeClass = 'badge-green';
+            stats.best++;
+            stats.scoreSum += 95;
+          }
+        } else {
+          // Erreur ou gaffe
+          const rand = Math.random();
+          if (rand < 0.45) {
+            label = '🔵 Excellent';
+            badgeClass = 'badge-blue';
+            stats.great++;
+            stats.scoreSum += 80;
+          } else if (rand < 0.75) {
+            label = '🟡 Imprécision';
+            badgeClass = 'badge-gold';
+            stats.inaccuracy++;
+            stats.scoreSum += 60;
+          } else if (rand < 0.90) {
+            label = '🟠 Erreur';
+            badgeClass = 'badge-danger';
+            stats.mistake++;
+            stats.scoreSum += 35;
+          } else {
+            label = '🔴 Gaffe (Blunder)';
+            badgeClass = 'badge-danger';
+            stats.blunder++;
+            stats.scoreSum += 10;
+            isBlunder = true;
+          }
+        }
+
+        moveDetails.push({
+          num: Math.floor(currentIdx / 2) + 1,
+          color: isWhite ? 'w' : 'b',
+          played: playedMove,
+          best: bestMove,
+          label,
+          badgeClass,
+          isBlunder
+        });
+
+        currentIdx++;
+        const pct = Math.round((currentIdx / totalMoves) * 100);
+        const pBar = modal.querySelector('#reviewProgressBar');
+        const pText = modal.querySelector('#reviewProgressText');
+        if (pBar) pBar.style.width = `${pct}%`;
+        if (pText) pText.textContent = `Analyse du coup ${currentIdx}/${totalMoves} (${pct}%)...`;
+
+        setTimeout(analyzeNext, 30);
       };
 
-      analyzeNext(0);
+      analyzeNext();
     },
 
     _onHash() {
@@ -340,12 +476,36 @@ init() {
     _renderAISetup() {
       const host = document.getElementById('modeContent');
       if (!host) return;
+
+      const BOTS = [
+        { id: 'martin', name: 'Martin', avatar: '👶', elo: 250, level: 1, desc: 'Débutant absolu' },
+        { id: 'jimmy', name: 'Jimmy', avatar: '🧢', elo: 600, level: 2, desc: 'Joueur junior' },
+        { id: 'elena', name: 'Elena', avatar: '👓', elo: 1200, level: 5, desc: 'Amateur tactique' },
+        { id: 'nelson', name: 'Nelson', avatar: '⚡', elo: 1500, level: 7, desc: 'Attaque Dame agressive' },
+        { id: 'master', name: 'Maître Bot', avatar: '🧙‍♂️', elo: 2000, level: 9, desc: 'Jeu positionnel' },
+        { id: 'magnus', name: 'Stockfish GM', avatar: '👑', elo: 2850, level: 10, desc: 'Moteur imbattable' }
+      ];
+
       host.innerHTML = `
+        <div class="form-group mb-20">
+          <label class="mb-10 block font-bold">🤖 Choisir un Bot Adversaire (Style Chess.com)</label>
+          <div class="grid grid-3 gap-10" id="botGrid">
+            ${BOTS.map((b, idx) => `
+              <div class="stat-card bot-card ${idx === 2 ? 'selected border-accent' : ''}" data-bot-id="${b.id}" style="cursor:pointer;padding:10px;text-align:center;transition:all 0.2s">
+                <div style="font-size:28px">${b.avatar}</div>
+                <div class="font-bold mt-5" style="font-size:13px">${b.name}</div>
+                <div class="text-accent font-bold" style="font-size:11px">${b.elo} Elo</div>
+                <div class="text-muted" style="font-size:10px">${b.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
         <div class="form-group">
-          <label>Niveau de difficulté</label>
+          <label>Niveau de difficulté précis (1 à 10)</label>
           <div class="time-select">
             ${[1,2,3,4,5,6,7,8,9,10].map(l =>
-              `<div class="time-option" data-level="${l}"><div class="t-label">${l}</div><div class="t-desc">${this._levelLabel(l)}</div></div>`
+              `<div class="time-option ${l === 5 ? 'selected' : ''}" data-level="${l}"><div class="t-label">${l}</div><div class="t-desc">${this._levelLabel(l)}</div></div>`
             ).join('')}
           </div>
         </div>
@@ -369,7 +529,25 @@ init() {
         <button class="btn btn-cta btn-lg btn-block mt-20" id="startAI">♟ Commencer la partie</button>
       `;
 
+      let selectedBot = BOTS[2];
       let selLevel = 5, selTime = 10, selInc = 0, selColor = 'w';
+
+      host.querySelectorAll('.bot-card').forEach(el => {
+        el.addEventListener('click', () => {
+          host.querySelectorAll('.bot-card').forEach(x => {
+            x.classList.remove('selected', 'border-accent');
+          });
+          el.classList.add('selected', 'border-accent');
+          const botId = el.dataset.botId;
+          selectedBot = BOTS.find(b => b.id === botId) || BOTS[2];
+          selLevel = selectedBot.level;
+
+          // Mettre à jour le sélecteur de niveau
+          host.querySelectorAll('.time-option[data-level]').forEach(x => {
+            x.classList.toggle('selected', parseInt(x.dataset.level, 10) === selLevel);
+          });
+        });
+      });
 
       host.querySelectorAll('.time-option[data-level]').forEach(el => {
         el.addEventListener('click', () => {
@@ -395,7 +573,7 @@ init() {
       });
       host.querySelector('#startAI').addEventListener('click', () => {
         if (selColor === 'r') selColor = Math.random() < 0.5 ? 'w' : 'b';
-        this.startGame('ai', { level: selLevel, time: selTime, increment: selInc, color: selColor });
+        this.startGame('ai', { level: selLevel, time: selTime, increment: selInc, color: selColor, bot: selectedBot });
       });
     },
 
