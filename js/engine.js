@@ -538,8 +538,9 @@
       if (!this.sfAvailable) return this._analyzeMinimax(fen, opts);
 
       return new Promise((resolve) => {
+        const depth = (opts && opts.depth) ? opts.depth : 12;
         this.stockfish.postMessage(`position fen ${fen}`);
-        this.stockfish.postMessage(`go depth 12`);
+        this.stockfish.postMessage(`go depth ${depth}`);
 
         const listener = (e) => {
           const line = e.data;
@@ -585,10 +586,11 @@
     },
 
     _analyzeMinimax(fen, opts) {
+      const level = (opts && opts.level != null) ? opts.level : 3;
       return new Promise((resolve) => {
-        this._getMinimaxMove(fen, { level: 9 }).then(m => {
+        this._getMinimaxMove(fen, { level }).then(m => {
           const g = new Chess(fen);
-          const info = { score: evaluateBoard(g), scoreKind: 'cp', depth: 4, bestMove: m };
+          const info = { score: evaluateBoard(g), scoreKind: 'cp', depth: level >= 8 ? 4 : 2, bestMove: m };
           if (opts && opts.onInfo) opts.onInfo(info);
           resolve({ bestMove: m, info });
         });

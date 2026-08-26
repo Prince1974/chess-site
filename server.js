@@ -217,7 +217,7 @@ if (usePostgres) {
           wins INTEGER NOT NULL DEFAULT 0,
           losses INTEGER NOT NULL DEFAULT 0,
           draws INTEGER NOT NULL DEFAULT 0,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `);
       await dbRun(`
@@ -227,7 +227,7 @@ if (usePostgres) {
           black_username TEXT,
           result TEXT,
           pgn TEXT,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `);
       // Créer admin par défaut si inexistant

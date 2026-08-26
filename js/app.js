@@ -207,7 +207,7 @@ init() {
 
         let bestMove = playedMove;
         try {
-          const res = await Engine.analyze(fen);
+          const res = await Engine.analyze(fen, { depth: 6, level: 3 });
           if (res && res.bestMove) bestMove = res.bestMove;
         } catch (e) {}
 
