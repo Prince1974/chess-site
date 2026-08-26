@@ -1187,10 +1187,28 @@ init() {
             <div class="flex gap-8 items-center">
               <span class="badge">${h.mode === 'ai' ? 'IA' : h.mode === 'online' ? 'En ligne' : 'Local'}</span>
               <span class="hi-result">${resText}</span>
+              <button class="btn btn-sm btn-gold btn-bilan-hist" data-pgn="${encodeURIComponent(h.pgn || '')}">📊</button>
             </div>
           `;
           item.style.cursor = 'pointer';
           item.title = h.reason;
+          item.querySelector('.btn-bilan-hist').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const pgn = decodeURIComponent(e.target.dataset.pgn);
+            if (!pgn) { ChessUI.toast('PGN non disponible', 'error'); return; }
+            // Reconstruction légère pour le review
+            const c = new Chess();
+            c.loadPgn(pgn);
+            
+            // Démarrer avec la FEN par défaut
+            const fenHistory = [new Chess().fen()];
+            
+            const c2 = new Chess();
+            const hist = c.history({ verbose: true });
+            hist.forEach(m => { try { c2.move(m.san); fenHistory.push(c2.fen()); } catch(e) {} });
+            
+            App.showGameReview({ fenHistory, moveList: c.history() });
+          });
           list.appendChild(item);
         });
       }
