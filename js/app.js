@@ -155,43 +155,69 @@ init() {
           content.innerHTML = `
             <!-- Accuracy Header -->
             <div class="grid grid-2 gap-15 mb-20">
-              <div class="card center p-15" style="border: 2px solid #fff; background: rgba(255,255,255,0.04)">
-                <div class="text-secondary" style="font-size:12px">⚪ BLANCS</div>
-                <div class="stat-value font-bold my-5" style="font-size:36px; color:#fff">${wAcc}%</div>
-                <div class="badge badge-gold" style="font-size:11px">Précision Globale</div>
+              <div class="card p-15" style="border-top: 4px solid var(--accent); background: rgba(255,255,255,0.05)">
+                <div class="flex items-center gap-10 mb-10">
+                  <div style="font-size:24px">⚪</div>
+                  <div>
+                    <div style="font-weight:bold">BLANCS</div>
+                    <div style="font-size:12px; color:var(--text-secondary)">Précision</div>
+                  </div>
+                </div>
+                <div style="font-size:32px; font-weight:800; color:var(--accent)">${wAcc}%</div>
               </div>
-              <div class="card center p-15" style="border: 2px solid #555; background: rgba(0,0,0,0.2)">
-                <div class="text-secondary" style="font-size:12px">⚫ NOIRS</div>
-                <div class="stat-value font-bold my-5" style="font-size:36px; color:#888">${bAcc}%</div>
-                <div class="badge badge-gold" style="font-size:11px">Précision Globale</div>
+              <div class="card p-15" style="border-top: 4px solid #333; background: rgba(0,0,0,0.1)">
+                <div class="flex items-center gap-10 mb-10">
+                  <div style="font-size:24px">⚫</div>
+                  <div>
+                    <div style="font-weight:bold">NOIRS</div>
+                    <div style="font-size:12px; color:var(--text-secondary)">Précision</div>
+                  </div>
+                </div>
+                <div style="font-size:32px; font-weight:800; color:var(--text-muted)">${bAcc}%</div>
               </div>
             </div>
 
-            <!-- Classifications Grid -->
+            <!-- Detailed Stats Table -->
             <div class="card mb-20 p-15">
-              <h3 class="mb-10" style="font-size:15px">Classification des Coups (Style Chess.com)</h3>
-              <div class="grid grid-3 gap-10 text-center" style="font-size:12px">
-                <div class="p-5 border rounded"><span class="text-accent font-bold">🌟 Brillants :</span> ${whiteStats.brilliant + blackStats.brilliant}</div>
-                <div class="p-5 border rounded"><span class="text-green font-bold">🟢 Meilleurs :</span> ${whiteStats.best + blackStats.best}</div>
-                <div class="p-5 border rounded"><span class="text-blue font-bold">🔵 Excellents :</span> ${whiteStats.great + blackStats.great}</div>
-                <div class="p-5 border rounded"><span class="text-gold font-bold">🟡 Imprécisions :</span> ${whiteStats.inaccuracy + blackStats.inaccuracy}</div>
-                <div class="p-5 border rounded"><span class="text-orange font-bold">🟠 Erreurs :</span> ${whiteStats.mistake + blackStats.mistake}</div>
-                <div class="p-5 border rounded"><span class="text-danger font-bold">🔴 Gaffes :</span> ${whiteStats.blunder + blackStats.blunder}</div>
-              </div>
+              <h3 class="mb-15" style="font-size:16px; border-bottom:1px solid var(--border); padding-bottom:10px">Analyse détaillée</h3>
+              <table style="width:100%; border-collapse: collapse; font-size:13px">
+                <thead>
+                  <tr style="color:var(--text-secondary)">
+                    <th style="text-align:left; padding:8px 0">Classification</th>
+                    <th style="text-align:center; padding:8px 0">Blancs</th>
+                    <th style="text-align:center; padding:8px 0">Noirs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    { l: '🌟 Brillants', w: whiteStats.brilliant, b: blackStats.brilliant, c: 'var(--accent)' },
+                    { l: '🟢 Meilleurs', w: whiteStats.best, b: blackStats.best, c: 'var(--green)' },
+                    { l: '🔵 Excellents', w: whiteStats.great, b: blackStats.great, c: 'var(--blue)' },
+                    { l: '🟡 Imprécisions', w: whiteStats.inaccuracy, b: blackStats.inaccuracy, c: 'var(--gold)' },
+                    { l: '🟠 Erreurs', w: whiteStats.mistake, b: blackStats.mistake, c: 'var(--orange)' },
+                    { l: '🔴 Gaffes', w: whiteStats.blunder, b: blackStats.blunder, c: 'var(--danger)' }
+                  ].map(r => `
+                    <tr style="border-top:1px solid var(--border)">
+                      <td style="padding:10px 0; color:${r.c}">${r.l}</td>
+                      <td style="padding:10px 0; text-align:center; font-weight:bold">${r.w}</td>
+                      <td style="padding:10px 0; text-align:center; font-weight:bold">${r.b}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
             </div>
 
             <!-- Move-by-move Review -->
-            <h3 class="mb-10" style="font-size:15px">Détail des Coups Analysés</h3>
+            <h3 class="mb-10" style="font-size:16px">Détail des coups</h3>
             <div class="review-move-list" style="max-height: 240px; overflow-y: auto; font-size: 13px; border: 1px solid var(--border); border-radius: 6px;">
               ${moveDetails.map(m => `
-                <div class="p-8 border-b flex justify-between items-center" style="background: ${m.isBlunder ? 'rgba(235,97,80,0.1)' : 'transparent'}">
+                <div class="p-10 border-b flex justify-between items-center" style="background: ${m.isBlunder ? 'rgba(235,97,80,0.08)' : 'transparent'}">
                   <div>
-                    <b>${m.num}. ${m.color === 'w' ? '⚪' : '⚫'} ${m.played}</b>
-                    <span class="text-muted ml-5" style="font-size:11px">(Meilleur : <b>${m.best}</b>)</span>
+                    <span class="text-muted font-monospace" style="margin-right:10px">${m.num}.</span>
+                    <b>${m.played}</b>
+                    <span class="text-muted" style="font-size:11px; margin-left:5px">vs ${m.best}</span>
                   </div>
-                  <div>
-                    <span class="badge ${m.badgeClass}">${m.label}</span>
-                  </div>
+                  <span class="badge ${m.badgeClass}" style="padding:2px 8px">${m.label}</span>
                 </div>
               `).join('')}
             </div>
