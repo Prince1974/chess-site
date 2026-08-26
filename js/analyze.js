@@ -18,11 +18,17 @@
     engineAvailable: false,
     analyzing: false,
 
-    async render(container) {
+    async render(container, gameData = null) {
       this.container = container;
-      this.chess = Engine.newGame();
-      this.currentIndex = 0;
-      this.fenHistory = [this.chess.fen()];
+      if (gameData) {
+        this.fenHistory = gameData.fenHistory;
+        this.chess = new Chess(this.fenHistory[this.fenHistory.length - 1]);
+        this.currentIndex = this.fenHistory.length - 1;
+      } else {
+        this.chess = Engine.newGame();
+        this.currentIndex = 0;
+        this.fenHistory = [this.chess.fen()];
+      }
       this._build();
       this._analyze();
     },

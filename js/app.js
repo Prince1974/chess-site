@@ -97,10 +97,11 @@ init() {
     },
 
     showGameReview(gameInstance) {
+      this.gameToReview = gameInstance;
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.innerHTML = `
-        <div class="card modal-content" style="max-width: 680px; width: 92vw; max-height: 85vh; overflow-y: auto;">
+        <div class="card modal-content" style="max-width: 800px; width: 92vw; max-height: 90vh; overflow-y: auto;">
           <div class="flex justify-between items-center mb-15">
             <h2 class="flex items-center gap-8 m-0">
               <span>📊</span>
@@ -119,14 +120,19 @@ init() {
 
           <div id="reviewContent" style="display:none"></div>
 
-          <div class="flex justify-end gap-10 mt-20">
-            <button class="btn btn-cta" id="closeReview">Terminer l'analyse</button>
+          <div class="flex justify-between gap-10 mt-20">
+            <button class="btn btn-secondary" id="closeReview">Fermer</button>
+            <button class="btn btn-cta" id="btnGoToAnalyze">Voir l'analyse interactive</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
-      modal.querySelector('#closeReviewTop').addEventListener('click', () => modal.remove());
-      modal.querySelector('#closeReview').addEventListener('click', () => modal.remove());
+      modal.querySelector('#closeReviewTop').addEventListener('click', () => { modal.remove(); this.gameToReview = null; });
+      modal.querySelector('#closeReview').addEventListener('click', () => { modal.remove(); this.gameToReview = null; });
+      modal.querySelector('#btnGoToAnalyze').addEventListener('click', () => { 
+        modal.remove(); 
+        this.navigate('analyze'); 
+      });
 
       const history = gameInstance.fenHistory || [];
       const moveList = gameInstance.moveList || [];
@@ -825,7 +831,12 @@ init() {
     // ===================== ANALYSE =====================
     renderAnalyze(sec) {
       sec.innerHTML = '';
-      Analyze.render(sec);
+      if (this.gameToReview) {
+        Analyze.render(sec, this.gameToReview);
+        this.gameToReview = null; // Clear it after use
+      } else {
+        Analyze.render(sec);
+      }
     },
 
     // ===================== PROFIL =====================
