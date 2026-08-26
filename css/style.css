@@ -115,6 +115,22 @@ body { display:flex; flex-direction:column; min-height:100vh; }
 }
 
 .header-user { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.btn-pro {
+  background: linear-gradient(135deg, var(--gold), #d49f3e);
+  color: #17181c;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+  margin-right: 8px;
+}
+.btn-pro:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 10px rgba(240, 198, 116, 0.4);
+}
 .user-chip {
   display: flex;
   align-items: center;
@@ -150,6 +166,8 @@ body { display:flex; flex-direction:column; min-height:100vh; }
   border-radius: 8px;
   cursor: pointer;
 }
+
+.ad-container { min-height: 100px; border-bottom: 1px solid var(--border); }
 
 /* ===================== Main ===================== */
 main {

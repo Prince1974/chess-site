@@ -505,6 +505,10 @@ init() {
       });
     },
 
+    showProModal() {
+      alert('Devenez Pro pour accéder à tout le contenu premium !');
+    },
+
     _renderAISetup() {
       const host = document.getElementById('modeContent');
       if (!host) return;
@@ -545,7 +549,10 @@ init() {
           <label>Temps / incrément</label>
           <div class="time-select">
             <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc">Rapide</div></div>
+            <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
+            <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
             <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc">Blitz</div></div>
+            <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
             <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc">Classique</div></div>
             <div class="time-option" data-time="1" data-inc="1"><div class="t-label">1+1</div><div class="t-desc">Bullet</div></div>
           </div>
@@ -622,7 +629,10 @@ init() {
           <label>Cadence</label>
           <div class="time-select">
             <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc">Rapide</div></div>
+            <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
+            <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
             <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc">Blitz</div></div>
+            <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
             <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc">Classique</div></div>
             <div class="time-option" data-time="1" data-inc="1"><div class="t-label">1+1</div><div class="t-desc">Bullet</div></div>
           </div>
@@ -656,7 +666,10 @@ init() {
         <p class="text-secondary mb-10" style="font-size:13px">Générez un code à partager avec votre ami, puis choisissez votre cadence.</p>
         <div class="time-select mb-10">
           <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc"></div></div>
+          <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
+          <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
           <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc"></div></div>
+          <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
           <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc"></div></div>
         </div>
         <button class="btn btn-primary btn-block mb-20" id="btnHost">🔗 Créer et inviter</button>
