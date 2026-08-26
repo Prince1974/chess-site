@@ -1187,7 +1187,7 @@ init() {
             <div class="flex gap-8 items-center">
               <span class="badge">${h.mode === 'ai' ? 'IA' : h.mode === 'online' ? 'En ligne' : 'Local'}</span>
               <span class="hi-result">${resText}</span>
-              <button class="btn btn-sm btn-gold btn-bilan-hist" data-pgn="${encodeURIComponent(h.pgn || '')}">📊</button>
+              <button class="btn btn-sm btn-gold btn-bilan-hist" data-pgn="${encodeURIComponent(h.pgn || '')}" style="padding:4px 8px; font-size:12px;">📊 Bilan</button>
             </div>
           `;
           item.style.cursor = 'pointer';
@@ -1195,10 +1195,18 @@ init() {
           item.querySelector('.btn-bilan-hist').addEventListener('click', (e) => {
             e.stopPropagation();
             const pgn = decodeURIComponent(e.target.dataset.pgn);
-            if (!pgn) { ChessUI.toast('PGN non disponible', 'error'); return; }
+            if (!pgn) { 
+              ChessUI.toast('Ancienne partie : PGN non sauvegardé', 'warn'); 
+              return; 
+            }
             // Reconstruction légère pour le review
             const c = new Chess();
-            c.loadPgn(pgn);
+            try {
+                c.loadPgn(pgn);
+            } catch (err) {
+                ChessUI.toast('Erreur chargement PGN', 'error');
+                return;
+            }
             
             // Démarrer avec la FEN par défaut
             const fenHistory = [new Chess().fen()];
