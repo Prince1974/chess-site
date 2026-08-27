@@ -55,6 +55,7 @@ if (usePostgres) {
             username: 'admin',
             password_hash: bcrypt.hashSync('masterchess2026', 10),
             role: 'admin',
+            is_pro: true,
             rating: 2000,
             wins: 15,
             losses: 2,
@@ -66,6 +67,7 @@ if (usePostgres) {
             username: 'GrandMaster_Alex',
             password_hash: bcrypt.hashSync('player123', 10),
             role: 'user',
+            is_pro: false,
             rating: 1850,
             wins: 42,
             losses: 18,
@@ -77,6 +79,7 @@ if (usePostgres) {
             username: 'TacticsWizard',
             password_hash: bcrypt.hashSync('player123', 10),
             role: 'user',
+            is_pro: false,
             rating: 1620,
             wins: 28,
             losses: 14,
@@ -136,6 +139,7 @@ if (usePostgres) {
         username: params[0],
         password_hash: params[1],
         role: params[2] || 'user',
+        is_pro: params[2] === 'admin',
         rating: 1200,
         wins: 0,
         losses: 0,
@@ -161,6 +165,13 @@ if (usePostgres) {
       const u = db.users.find(u => Number(u.id) === Number(params[1]));
       if (u) {
         u.role = params[0];
+        writeDb(db);
+      }
+      return { changes: 1 };
+    } else if (sql.includes('UPDATE users SET is_pro = ? WHERE id = ?')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[1]));
+      if (u) {
+        u.is_pro = !!params[0];
         writeDb(db);
       }
       return { changes: 1 };
@@ -213,14 +224,21 @@ if (usePostgres) {
           username TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'user',
+          is_pro BOOLEAN NOT NULL DEFAULT FALSE,
           rating INTEGER NOT NULL DEFAULT 1200,
           wins INTEGER NOT NULL DEFAULT 0,
           losses INTEGER NOT NULL DEFAULT 0,
           draws INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-      `);
-      await dbRun(`
+        `);
+        // S'assurer que la colonne is_pro existe si la table a été créée avant
+        try {
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pro BOOLEAN DEFAULT FALSE;');
+        } catch (e) {
+        // Ignorer si déjà existant ou non supporté
+        }
+        // Créer admin par défaut si inexistant
         CREATE TABLE IF NOT EXISTS games (
           id SERIAL PRIMARY KEY,
           white_username TEXT,
@@ -443,11 +461,24 @@ app.post('/api/admin/login', (req, res) => {
 // Récupérer la liste des utilisateurs pour le panneau admin
 app.get('/api/admin/users', adminMiddleware, async (req, res) => {
   try {
-    const users = await dbQuery('SELECT id, username, role, rating, wins, losses, draws, created_at FROM users ORDER BY id ASC');
+    const users = await dbQuery('SELECT id, username, role, is_pro, rating, wins, losses, draws, created_at FROM users ORDER BY id ASC');
     res.json({ users: users || [] });
   } catch (err) {
     console.error('Erreur get users admin:', err);
     res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs.' });
+  }
+});
+
+// Activer / Désactiver le statut Pro d'un utilisateur
+app.post('/api/admin/users/:id/toggle-pro', adminMiddleware, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { isPro } = req.body || {};
+    await dbRun('UPDATE users SET is_pro = ? WHERE id = ?', [isPro ? 1 : 0, id]);
+    res.json({ ok: true, isPro: !!isPro });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur mise à jour statut Pro.' });
   }
 });
 

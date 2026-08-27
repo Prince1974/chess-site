@@ -178,16 +178,21 @@
     _analyze() {
       if (this.analyzing) return;
       this.analyzing = true;
-      this.statusEl.textContent = 'Analyse en cours…';
+      
+      const isPro = Storage.isPro();
+      const depth = isPro ? 18 : 10;
+      
+      this.statusEl.textContent = `Analyse ${isPro ? 'Pro' : 'Standard'} (profondeur ${depth})…`;
       this.statusEl.className = 'engine-status think';
+      
       const fen = this.chess.fen();
-      Engine.analyze(fen, { depth: 12, onInfo: (info) => this._onInfo(info) })
+      Engine.analyze(fen, { depth: depth, onInfo: (info) => this._onInfo(info) })
         .then((res) => {
           this.analyzing = false;
           if (res && res.bestMove) {
             this.bestMoveEl.textContent = res.bestMove;
           }
-          this.statusEl.textContent = 'Moteur prêt';
+          this.statusEl.textContent = `Moteur prêt (${isPro ? 'Analyse Pro active' : 'Mode Standard'})`;
           this.statusEl.className = 'engine-status';
         })
         .catch(() => {

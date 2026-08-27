@@ -97,6 +97,10 @@ init() {
     },
 
     showGameReview(gameInstance) {
+      if (!Storage.isPro()) {
+        this.showProModal();
+        return;
+      }
       this.gameToReview = gameInstance;
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
@@ -343,9 +347,10 @@ init() {
       const lvl = Storage.getLevel();
       const streak = Storage.getStreak();
       const adminBadge = Storage.isAdmin() ? '<span class="badge badge-gold" style="font-size:10px;padding:2px 4px;margin-left:4px">👑 Admin</span>' : '';
+      const proBadge = (Storage.isPro() && !Storage.isAdmin()) ? '<span class="badge badge-accent" style="font-size:10px;padding:2px 4px;margin-left:4px">💎 Pro</span>' : '';
       const streakBadge = (streak && streak.count > 1) ? `<span style="font-size:11px;margin-left:4px">🔥${streak.count}</span>` : '';
 
-      document.getElementById('userName').innerHTML = `${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${adminBadge}`;
+      document.getElementById('userName').innerHTML = `${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${proBadge}${adminBadge}`;
       
       const avatarEl = document.getElementById('avatarLetter');
       if (p.photo) {
@@ -354,6 +359,20 @@ init() {
       } else {
         avatarEl.textContent = (p.avatar || p.name || 'J').charAt(0).toUpperCase();
         avatarEl.style.background = '';
+      }
+
+      // Mettre à jour l'état du bouton "Go Pro"
+      const btnPro = document.querySelector('.btn-pro');
+      if (btnPro) {
+        if (Storage.isPro()) {
+          btnPro.innerHTML = '✨ Membre Pro';
+          btnPro.style.background = 'linear-gradient(45deg, var(--gold), var(--accent))';
+          btnPro.style.color = '#000';
+        } else {
+          btnPro.innerHTML = 'Go Pro';
+          btnPro.style.background = '';
+          btnPro.style.color = '';
+        }
       }
     },
 
@@ -506,7 +525,129 @@ init() {
     },
 
     showProModal() {
-      alert('Devenez Pro pour accéder à tout le contenu premium !');
+      if (Storage.isPro() && !Storage.isAdmin()) {
+        ChessUI.toast('Vous êtes déjà membre Pro ! Merci de votre soutien. 💎', 'success');
+        return;
+      }
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="card modal-content" style="max-width: 500px; width: 92vw; border: 1px solid var(--gold);">
+          <div class="flex justify-between items-center mb-20">
+            <h2 class="m-0 flex items-center gap-10">
+              <span style="font-size:24px">💎</span>
+              <span>Masterchessis <span class="text-accent">Pro</span></span>
+            </h2>
+            <button class="btn btn-sm" id="closePro">✖</button>
+          </div>
+
+          <p class="mb-20 text-secondary">Libérez votre plein potentiel avec nos outils d'analyse avancés et un entraînement illimité.</p>
+
+          <ul class="pro-features-list mb-25" style="list-style:none; padding:0;">
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Analyse IA Illimitée</b> (Profondeur 20+)</li>
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Puzzles Tactiques</b> à volonté (illimité)</li>
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Bilan de Partie Pro</b> après chaque match</li>
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Badge de prestige</b> sur votre profil</li>
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Zéro Publicité</b> pour une concentration totale</li>
+            <li class="mb-10 flex items-center gap-10">✅ <b class="text-accent">Accès Prioritaire</b> aux nouveaux cours</li>
+          </ul>
+
+          <div class="pricing-tabs grid grid-2 gap-15 mb-25">
+            <div class="card p-15 center pricing-card selected" data-plan="monthly" style="cursor:pointer; border:2px solid var(--accent)">
+              <div class="text-muted" style="font-size:12px">MENSUEL</div>
+              <div style="font-size:24px; font-weight:800">1$ <small style="font-size:12px; font-weight:normal">/mois</small></div>
+              <div class="text-accent" style="font-size:11px">~2.800 FC</div>
+            </div>
+            <div class="card p-15 center pricing-card" data-plan="yearly" style="cursor:pointer; border:1px solid var(--border)">
+              <div class="badge badge-gold" style="position:absolute; top:-10px; right:10px; font-size:9px">-20%</div>
+              <div class="text-muted" style="font-size:12px">ANNUEL</div>
+              <div style="font-size:24px; font-weight:800">10$ <small style="font-size:12px; font-weight:normal">/an</small></div>
+              <div class="text-accent" style="font-size:11px">Meilleure offre</div>
+            </div>
+          </div>
+
+          <div class="payment-methods mb-20">
+            <p class="text-muted mb-10 center" style="font-size:12px">Modes de paiement acceptés en RDC :</p>
+            <div class="flex justify-center gap-15 opacity-70">
+              <span title="M-Pesa">📱 M-Pesa</span>
+              <span title="Orange Money">🍊 Orange</span>
+              <span title="Airtel Money">🔴 Airtel</span>
+              <span title="Carte Bancaire">💳 Carte</span>
+            </div>
+          </div>
+
+          <button class="btn btn-cta btn-lg btn-block" id="btnPayNow">⚡ S'abonner maintenant</button>
+          
+          <p class="center mt-15 text-muted" style="font-size:11px">Paiement sécurisé via CinetPay / Flutterwave</p>
+          <div class="center mt-10">
+            <button class="btn btn-sm btn-secondary" id="btnProDemo" style="font-size:10px; opacity:0.5">Activer démo (Test)</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#closePro').addEventListener('click', () => modal.remove());
+      
+      const cards = modal.querySelectorAll('.pricing-card');
+      cards.forEach(c => {
+        c.addEventListener('click', () => {
+          cards.forEach(x => {
+            x.classList.remove('selected');
+            x.style.border = '1px solid var(--border)';
+          });
+          c.classList.add('selected');
+          c.style.border = '2px solid var(--accent)';
+        });
+      });
+
+      modal.querySelector('#btnPayNow').addEventListener('click', () => {
+        const plan = modal.querySelector('.pricing-card.selected').dataset.plan;
+        const amount = plan === 'monthly' ? '1$ (2.800 FC)' : '10$ (28.000 FC)';
+        const username = Storage.getProfile().name || 'Invité';
+        
+        // Numéro de téléphone WhatsApp du propriétaire du site (l'utilisateur)
+        const myWhatsAppNumber = '243859173643'; 
+        
+        const message = `Bonjour Masterchessis ! Je viens d'effectuer un transfert Mobile Money de ${amount} pour mon abonnement Pro.\n\nMon pseudo sur le site est : *${username}*.\n\nVoici ma capture d'écran de transaction :`;
+        const encodedMsg = encodeURIComponent(message);
+        
+        const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedMsg}`;
+        
+        // Afficher des instructions claires avant la redirection
+        modal.innerHTML = `
+          <div class="card p-15" style="border: 1px solid var(--gold);">
+            <h2 class="center mb-15">📱 Instructions de Paiement</h2>
+            <p class="mb-15 text-secondary text-center">Effectuez le transfert de <b class="text-accent">${amount}</b> vers l'un des numéros ci-dessous :</p>
+            
+            <div class="stat-card mb-15 p-15" style="background:rgba(255,255,255,0.02)">
+              <div class="mb-10 flex justify-between">📱 <b>M-Pesa (Vodacom) :</b> <span class="text-accent font-monospace">+243 834 335 682</span></div>
+              <div class="flex justify-between">🍊 <b>Orange Money :</b> <span class="text-accent font-monospace">+243 859 173 643</span></div>
+            </div>
+
+            <div class="alert alert-info mb-20" style="background:rgba(255,215,0,0.05); border:1px solid var(--gold); padding:10px; border-radius:6px; font-size:12px">
+              ⚠️ <b>IMPORTANT :</b> Prenez une capture d'écran (Screenshot) de votre reçu Mobile Money, puis cliquez sur le bouton ci-dessous pour me l'envoyer directement sur WhatsApp avec votre pseudo <b>${username}</b>.
+            </div>
+
+            <a href="${whatsappUrl}" target="_blank" class="btn btn-cta btn-lg btn-block center" id="btnConfirmWhatsApp" style="text-decoration:none; background:#25D366; color:#000;">
+              👉 Confirmer & Envoyer le reçu sur WhatsApp
+            </a>
+
+            <button class="btn btn-secondary btn-block mt-15" id="btnBackToProOffers">← Retour aux offres</button>
+          </div>
+        `;
+
+        modal.querySelector('#btnBackToProOffers').addEventListener('click', () => {
+          modal.remove();
+          this.showProModal();
+        });
+      });
+
+      modal.querySelector('#btnProDemo').addEventListener('click', () => {
+        Storage.setPro(true);
+        this._updateUserChip();
+        modal.remove();
+      });
     },
 
     _renderAISetup() {

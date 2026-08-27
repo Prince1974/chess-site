@@ -72,7 +72,15 @@
           const stars = prog ? (prog.stars || 3) : 0;
 
           // Déblocage progressif : accessible si admin, si première leçon ou si précédente terminée
-          const isUnlocked = isGod || idx === 0 || (doneMap[lvlLessons[idx - 1].id] && doneMap[lvlLessons[idx - 1].id].done) || isDone;
+          let isUnlocked = isGod || idx === 0 || (doneMap[lvlLessons[idx - 1].id] && doneMap[lvlLessons[idx - 1].id].done) || isDone;
+          
+          // Vérification Pro pour niveaux supérieurs
+          const isProRequired = (lvl === 'Intermédiaire' || lvl === 'Avancé');
+          const hasPro = Storage.isPro();
+          
+          if (isProRequired && !hasPro) {
+            isUnlocked = false;
+          }
 
           const card = document.createElement('div');
           card.className = `lesson-card-interactive card ${isDone ? 'completed' : ''} ${!isUnlocked ? 'locked' : ''}`;
@@ -87,12 +95,15 @@
             <p class="text-secondary mb-15" style="font-size:13px">${l.summary || l.category}</p>
             <div class="flex justify-between items-center mt-auto">
               <span class="badge ${lvl === 'Débutant' ? 'badge-green' : lvl === 'Intermédiaire' ? 'badge-blue' : 'badge-gold'}">${l.category} · ⏱ ${l.estTime} min</span>
-              <button class="btn btn-sm ${isDone ? 'btn-blue' : 'btn-cta'}">${isDone ? 'Revoir ↺' : isUnlocked ? 'Commencer ➔' : '🔒 Verrouillé'}</button>
+              <button class="btn btn-sm ${isDone ? 'btn-blue' : isUnlocked ? 'btn-cta' : 'btn-secondary'}">${isDone ? 'Revoir ↺' : isUnlocked ? 'Commencer ➔' : isProRequired && !hasPro ? '💎 Pro Only' : '🔒 Verrouillé'}</button>
             </div>
           `;
 
           if (isUnlocked) {
             card.addEventListener('click', () => this._startInteractiveLesson(l));
+          } else if (isProRequired && !hasPro) {
+            card.addEventListener('click', () => app.showProModal());
+            card.style.cursor = 'pointer';
           } else {
             card.style.opacity = '0.6';
             card.style.cursor = 'not-allowed';

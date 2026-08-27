@@ -173,6 +173,29 @@
     },
 
     _loadPuzzle(idx) {
+      // Vérification du quota Pro pour les puzzles
+      if (!Storage.isPro()) {
+        const count = Storage.getDailyPuzzleCount();
+        if (count >= 5) {
+          if (this.feedbackEl) {
+            this.feedbackEl.style.display = 'block';
+            this.feedbackEl.className = 'puzzle-result-box info';
+            this.feedbackEl.innerHTML = `
+              <div class="center p-10">
+                <div class="font-bold mb-10">🚀 Limite quotidienne atteinte (5/5)</div>
+                <p style="font-size:12px" class="mb-10">Passez à Masterchessis <span class="text-accent">Pro</span> pour des puzzles illimités !</p>
+                <button class="btn btn-cta btn-sm" onclick="app.showProModal()">Devenir Pro 💎</button>
+              </div>
+            `;
+          }
+          // Bloquer le chargement du plateau
+          const boardContainer = document.getElementById('puzzleBoard');
+          if (boardContainer) boardContainer.innerHTML = '<div class="center p-40 text-muted">Limite de puzzles gratuite atteinte.<br><br><button class="btn btn-cta" onclick="app.showProModal()">Débloquer avec Pro 💎</button></div>';
+          return;
+        }
+        Storage.incrementDailyPuzzleCount();
+      }
+
       this.index = idx % this.selectedPuzzles.length;
       const p = this.selectedPuzzles[this.index];
       if (!p) return;

@@ -58,6 +58,7 @@
         avatar: 'J',
         photo: null,
         role: 'user', // 'user' | 'admin'
+        isPro: false,
         createdAt: Date.now()
       });
     },
@@ -71,10 +72,20 @@
       return updated;
     },
 
-    // Rôle Administrateur
+    // Rôle Administrateur & Premium
     isAdmin() {
       const p = this.getProfile();
       return p.role === 'admin' || this.isGodMode();
+    },
+    isPro() {
+      const p = this.getProfile();
+      return p.isPro === true || this.isAdmin();
+    },
+    setPro(val) {
+      this.updateProfile({ isPro: !!val });
+      if (val && window.ChessUI) {
+        ChessUI.toast('💎 Compte Masterchessis Pro Activé ! Profitez de tous les avantages.', 'success', 5000);
+      }
     },
     setRole(role) {
       this.updateProfile({ role: role === 'admin' ? 'admin' : 'user' });
@@ -261,6 +272,17 @@
       return this.get('puzzleProgress', {});
     },
     setPuzzleProgress(p) { this.set('puzzleProgress', p); },
+    getDailyPuzzleCount() {
+      const today = new Date().toDateString();
+      const data = this.get('puzzleDaily', { date: today, count: 0 });
+      if (data.date !== today) return 0;
+      return data.count;
+    },
+    incrementDailyPuzzleCount() {
+      const today = new Date().toDateString();
+      const current = this.getDailyPuzzleCount();
+      this.set('puzzleDaily', { date: today, count: current + 1 });
+    },
     markPuzzleSolved(id, solved) {
       const p = this.getPuzzleProgress();
       p[id] = { solved, at: Date.now() };

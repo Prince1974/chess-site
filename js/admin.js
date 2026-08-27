@@ -416,6 +416,7 @@
 
       tbody.innerHTML = filtered.map(u => {
         const isAdmin = u.role === 'admin';
+        const isPro = !!u.is_pro;
         return `
           <tr style="border-bottom:1px solid var(--border); transition: background 0.2s">
             <td style="padding:12px 10px; font-weight: bold; color: var(--text-muted)">#${u.id}</td>
@@ -426,7 +427,10 @@
               </div>
             </td>
             <td style="padding:12px 10px">
-              <span class="badge ${isAdmin ? 'badge-gold' : 'badge-blue'}">${isAdmin ? '👑 Admin' : '♟ Joueur'}</span>
+              <div class="flex flex-col gap-4">
+                <span class="badge ${isAdmin ? 'badge-gold' : 'badge-blue'}" style="width:fit-content">${isAdmin ? '👑 Admin' : '♟ Joueur'}</span>
+                ${isPro ? '<span class="badge badge-accent" style="width:fit-content">💎 Pro</span>' : ''}
+              </div>
             </td>
             <td style="padding:12px 10px; font-weight:bold; color:var(--accent)">${u.rating || 1200}</td>
             <td style="padding:12px 10px; font-size:13px; color:var(--text-secondary)">
@@ -436,6 +440,9 @@
             </td>
             <td style="padding:12px 10px; text-align: right">
               <div class="flex gap-5 justify-end">
+                <button class="btn btn-sm ${isPro ? 'btn-danger' : 'btn-gold'}" onclick="Admin.togglePro(${u.id}, ${!isPro})" title="Activer/Retirer Pro">
+                  ${isPro ? 'Retirer Pro' : 'Activer Pro 💎'}
+                </button>
                 <button class="btn btn-sm ${isAdmin ? 'btn-blue' : 'btn-secondary'}" onclick="Admin.toggleRole(${u.id}, '${isAdmin ? 'user' : 'admin'}')" title="Changer le rôle">
                   ${isAdmin ? 'Rétrograder' : 'Promouvoir Admin'}
                 </button>
@@ -446,6 +453,24 @@
           </tr>
         `;
       }).join('');
+    },
+
+    async togglePro(id, isPro) {
+      const backendUrl = this._getBackendUrl();
+      try {
+        await fetch(`${backendUrl || ''}/api/admin/users/${id}/toggle-pro`, {
+          method: 'POST',
+          headers: this._getAuthHeaders(),
+          body: JSON.stringify({ isPro: !!isPro })
+        });
+      } catch (e) {}
+
+      const user = this.usersCache.find(u => Number(u.id) === Number(id));
+      if (user) user.is_pro = !!isPro;
+      Storage.set('admin_local_users', this.usersCache);
+
+      ChessUI.toast(`Statut Pro mis à jour : ${isPro ? 'Activé 💎' : 'Désactivé'}`, 'success');
+      this._renderUserTable();
     },
 
     async banUser(id) {
