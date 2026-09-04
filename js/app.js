@@ -12,14 +12,17 @@
     game: null,
 
 init() {
-      Storage.applyTheme();
-      this._bindNav();
-      this._initRoot();
-      // Écouter le hash pour le routing
-      window.addEventListener('hashchange', () => this._onHash());
-      const route = window.location.hash.replace('#/', '') || 'home';
-      this.navigate(route);
-      this._updateUserChip();
+  Storage.applyTheme();
+  this._bindNav();
+  this._initRoot();
+
+  // Écouter le changement d'URL (Back/Forward)
+  window.addEventListener('popstate', () => this._onPathChange());
+
+  const route = window.location.pathname.replace(/^\/|\/$/g, '') || 'home';
+  this.navigate(route, true); // true = replaceState pour l'entrée initiale
+
+  this._updateUserChip();
       // Boucle d'horloge
       setInterval(() => {
         if (this.game) this.game.updateClockDisplay();
@@ -77,19 +80,26 @@ init() {
       });
     },
 
-    navigate(route) {
+    navigate(route, replace = false) {
       const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'secret-dashboard'];
       if (!valid.includes(route)) route = 'home';
       // Fermer la nav mobile
       document.getElementById('mainNav').classList.remove('open');
-      // Mettre à jour hash
-      if (window.location.hash !== '#/' + route) {
-        history.pushState(null, '', '#/' + route);
+      
+      // Mettre à jour l'URL
+      const path = route === 'home' ? '/' : '/' + route;
+      if (window.location.pathname !== path) {
+        if (replace) {
+          history.replaceState(null, '', path);
+        } else {
+          history.pushState(null, '', path);
+        }
       }
+
       // Mesure Google Analytics 4 : page_view
       if (window.gtag) {
         window.gtag('event', 'page_view', {
-          page_path: '/#/' + route,
+          page_path: path,
           page_title: route
         });
       }
@@ -314,8 +324,8 @@ init() {
       analyzeNext();
     },
 
-    _onHash() {
-      const route = window.location.hash.replace('#/', '') || 'home';
+    _onPathChange() {
+      const route = window.location.pathname.replace(/^\/|\/$/g, '') || 'home';
       this._activate(route);
     },
 
@@ -460,7 +470,14 @@ init() {
         const card = document.createElement('div');
         card.className = 'feature-card';
         card.innerHTML = `<div class="feature-icon">${it.icon}</div><h3>${it.title}</h3><p>${it.desc}</p>`;
-        card.addEventListener('click', () => it.online ? this.navigate('play#online') : this.navigate(it.route));
+        card.addEventListener('click', () => {
+          if (it.online) {
+            this.navigate('play');
+            setTimeout(() => this.showOnlinePanel(), 100);
+          } else {
+            this.navigate(it.route);
+          }
+        });
         features.appendChild(card);
       });
       sec.appendChild(features);
