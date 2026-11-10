@@ -32,6 +32,7 @@
       if (this.mode === 'online') {
         this.online = cfg.online;
         this.playerColor = this.online ? this.online.myColor : 'w';
+        this.roomCode = this.online ? this.online.myId : null;
       } else {
         this.playerColor = (this.mode === 'ai') ? this.settings.color : 'w';
       }
@@ -92,6 +93,7 @@
     },
 
     _timeout(color) {
+      if (this.mode === 'online' && this.online && color === this.playerColor && this.online.sendResign) this.online.sendResign();
       this._endGame({
         result: color === 'w' ? '0-1' : '1-0',
         reason: 'Temps écoulé'
@@ -187,6 +189,36 @@
         <button class="btn btn-sm btn-primary" id="btnBilan" style="display:none;background:var(--gold);color:#000;font-weight:bold;grid-column: span 2">📊 Bilan de Partie</button>
       `;
       s.appendChild(controls);
+
+      if (this.mode === 'online') {
+        const undo = controls.querySelector('#btnUndo');
+        const newBtn = controls.querySelector('#btnNew');
+        if (undo) undo.style.display = 'none';
+        if (newBtn) newBtn.style.display = 'none';
+        const chat = document.createElement('div');
+        chat.className = 'game-chat';
+        chat.innerHTML = `
+          <div class="game-chat-head"><span>💬 Chat de partie</span><span class="live-pill"><span></span> LIVE</span></div>
+          <div class="game-chat-messages" id="gameChatMessages"><div class="chat-system">Restez fair-play. Le chat est visible par les deux joueurs.</div></div>
+          <form class="game-chat-form" id="gameChatForm">
+            <input class="input" id="gameChatInput" maxlength="200" placeholder="Écrire un message…" autocomplete="off">
+            <button class="btn btn-primary btn-sm" type="submit">➤</button>
+          </form>
+        `;
+        s.appendChild(chat);
+        this.chatMessagesEl = chat.querySelector('#gameChatMessages');
+        const chatForm = chat.querySelector('#gameChatForm');
+        chatForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const input = chat.querySelector('#gameChatInput');
+          const text = input.value.trim();
+          if (!text || !this.online) return;
+          Storage.set('chatUsed', true);
+          this.online.sendChat(text);
+          this.addChatMessage(text, this._profileName(), true);
+          input.value = '';
+        });
+      }
 
       this.moveListEl = ml;
       this._bindControls();
@@ -461,6 +493,37 @@
       
       const bilanBtn = this.sidePanel.querySelector('#btnBilan');
       if (bilanBtn) bilanBtn.style.display = 'grid';
+
+      if (this.mode === 'online') {
+        let box = this.sidePanel.querySelector('.rematch-box');
+        if (!box) {
+          box = document.createElement('div');
+          box.className = 'rematch-box';
+          box.innerHTML = `
+            <button class="btn btn-primary btn-sm" id="btnRematch">🔁 Revanche</button>
+            <button class="btn btn-secondary btn-sm" id="btnAddOpponent">＋ Ajouter l’adversaire</button>
+          `;
+          this.sidePanel.appendChild(box);
+        }
+        box.style.display = 'flex';
+        const rematch = box.querySelector('#btnRematch');
+        if (rematch && !rematch._bound) {
+          rematch._bound = true;
+          rematch.addEventListener('click', () => {
+            this.online.sendRematch();
+            rematch.textContent = '⏳ En attente…';
+            rematch.disabled = true;
+            if (window.ChessUI) ChessUI.toast('Proposition de revanche envoyée', 'info');
+          });
+        }
+        const add = box.querySelector('#btnAddOpponent');
+        if (add && !add._bound) {
+          add._bound = true;
+          add.addEventListener('click', () => {
+            if (window.Social) Social.addFriend(this.online.opponentName);
+          });
+        }
+      }
     },
 
     _renderStatus() {
@@ -562,6 +625,25 @@ const s = Storage.getStats();
       }
     },
 
+    addChatMessage(text, name, own) {
+      if (!this.chatMessagesEl) return;
+      const el = document.createElement('div');
+      el.className = 'game-chat-message' + (own ? ' mine' : '');
+      const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const meta = document.createElement('div');
+      meta.className = 'chat-meta';
+      const who = document.createElement('b');
+      who.textContent = String(name || 'Adversaire');
+      const stamp = document.createElement('time');
+      stamp.textContent = time;
+      meta.append(who, stamp);
+      const body = document.createElement('div');
+      body.textContent = String(text);
+      el.append(meta, body);
+      this.chatMessagesEl.appendChild(el);
+      this.chatMessagesEl.scrollTop = this.chatMessagesEl.scrollHeight;
+    },
+
     _renderMoveList() {
       if (!this.moveListEl) return;
       this.moveListEl.innerHTML = '';
@@ -606,7 +688,7 @@ const s = Storage.getStats();
 
     destroy() {
       this.stopClock();
-      if (this.online) this.online.disconnect();
+      if (this.online && this.online.leaveGame) this.online.leaveGame(this.roomCode);
     },
 
     playerColor() { return this.playerColor; }

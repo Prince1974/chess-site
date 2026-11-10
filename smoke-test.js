@@ -20,6 +20,7 @@ const scripts = [
   'data/puzzles.js',
   'data/openings.js',
   'data/lessons.js',
+  'data/countries.js',
   'js/board.js',
   'js/game.js',
   'js/online.js',
@@ -28,6 +29,7 @@ const scripts = [
   'js/analyze.js',
   'js/openings.js',
   'js/admin.js',
+  'js/social.js',
   'js/app.js'
 ];
 
@@ -62,7 +64,7 @@ for (const s of scripts) {
 }
 
 // Vérifier que les globaux sont exposés
-const globals = ['Chess', 'Sound', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'Admin', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
+const globals = ['Chess', 'Sound', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'Admin', 'Social', 'Countries', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
 const missing = globals.filter(g => !window[g]);
 if (missing.length) errors.push('Missing globals: ' + missing.join(', '));
 
@@ -81,10 +83,10 @@ try {
 
 // Vérifier qu'il y a des sections
 const sections = document.querySelectorAll('section[data-view]');
-if (sections.length !== 8) errors.push('Expected 8 sections, got ' + sections.length);
+if (sections.length !== 9) errors.push('Expected 9 sections, got ' + sections.length);
 
 // Tester chaque vue via les renderers
-const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'secret-dashboard'];
+const routes = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'community', 'profile', 'secret-dashboard'];
 for (const route of routes) {
   try {
     window.App.navigate(route);

@@ -24,6 +24,24 @@
     onResign: null,
     onDisconnect: null,
     onError: null,
+    onLobbyChat: null,
+    onPresence: null,
+    onQueue: null,
+    onMatch: null,
+    onChallenge: null,
+    onChallengeSent: null,
+    onChallengeDeclined: null,
+    onChallengeError: null,
+    onFriendRequest: null,
+    onFriendAccepted: null,
+    onDrawOffered: null,
+    onDrawAccepted: null,
+    onDrawDeclined: null,
+    onGameOver: null,
+    onRematchOffered: null,
+    onRematchDeclined: null,
+    lobbySocket: null,
+    _lobbyBound: false,
 
     getBackendUrl() {
       const custom = localStorage.getItem('masterchess_backend_url');
@@ -64,7 +82,7 @@
 
     // Crée une partie en ligne
     async hostGame(opts) {
-      this.disconnect();
+      this._resetGameSocket();
       this.role = 'host';
       this.myColor = 'w';
 
@@ -140,7 +158,7 @@
 
     // Rejoindre une partie
     async joinGame(code, opts) {
-      this.disconnect();
+      this._resetGameSocket();
       this.role = 'guest';
       this.myColor = 'b';
       const cleanCode = (code || '').trim().toUpperCase();
@@ -216,6 +234,9 @@
     },
 
     _setupSocketEvents(socket) {
+      if (socket._mcSetup) return;
+      socket._mcSetup = true;
+
       socket.on('opponent_joined', ({ username }) => {
         this.connected = true;
         this.opponentName = username || 'Adversaire';
@@ -229,6 +250,17 @@
       socket.on('chat', ({ username, text }) => {
         if (this.onChat) this.onChat(text, username);
       });
+
+      socket.on('draw_offered', (d) => { if (this.onDrawOffered) this.onDrawOffered(d.from); });
+      socket.on('draw_accepted', () => { if (this.onDrawAccepted) this.onDrawAccepted(); });
+      socket.on('draw_declined', (d) => { if (this.onDrawDeclined) this.onDrawDeclined(d.by); });
+      socket.on('game_over', (d) => {
+        const result = d && d.result === '1/2-1/2' ? '½-½' : (d && d.result);
+        if (this.onGameOver) this.onGameOver(Object.assign({}, d, { result }));
+      });
+      socket.on('rematch_offered', (d) => { if (this.onRematchOffered) this.onRematchOffered(d.from); });
+      socket.on('rematch_declined', () => { if (this.onRematchDeclined) this.onRematchDeclined(); });
+      socket.on('rematch_waiting', () => { if (this.onQueue) this.onQueue({ status: 'rematch_waiting' }); });
 
       socket.on('opponent_resigned', () => {
         if (this.onResign) this.onResign();
@@ -259,6 +291,109 @@
         this.connected = false;
         if (this.onDisconnect) this.onDisconnect();
       });
+    },
+
+    async connectLobby() {
+      if (this.lobbySocket) return this.lobbySocket;
+      await this.loadSocketIo();
+      const baseUrl = this.getBackendUrl();
+      const token = localStorage.getItem('masterchess_jwt') || '';
+      const socket = window.io(baseUrl || window.location.origin, {
+        withCredentials: true, auth: { token }, timeout: 8000, reconnectionAttempts: 5
+      });
+      this.lobbySocket = socket;
+      socket.on('connect_error', () => { if (this.onError) this.onError(new Error('Serveur social indisponible')); });
+      socket.on('presence_update', (d) => { if (this.onPresence) this.onPresence(d.players || []); });
+      socket.on('lobby_message', (d) => { if (this.onLobbyChat) this.onLobbyChat(d); });
+      socket.on('queue_status', (d) => { if (this.onQueue) this.onQueue(d); });
+      socket.on('match_found', (d) => this._handleMatchFound(d));
+      socket.on('challenge_received', (d) => { if (this.onChallenge) this.onChallenge(d); });
+      socket.on('challenge_sent', (d) => { if (this.onChallengeSent) this.onChallengeSent(d); });
+      socket.on('challenge_declined', (d) => { if (this.onChallengeDeclined) this.onChallengeDeclined(d); });
+      socket.on('challenge_error', (d) => { if (this.onChallengeError) this.onChallengeError(d); });
+      socket.on('friend_request', (d) => { if (this.onFriendRequest) this.onFriendRequest(d); });
+      socket.on('friend_accepted', (d) => { if (this.onFriendAccepted) this.onFriendAccepted(d); });
+      return socket;
+    },
+
+    _handleMatchFound(data) {
+      this.mode = 'socket';
+      this.socket = this.lobbySocket;
+      this.myId = data.code;
+      this.myColor = data.color;
+      this.opponentName = data.opponent ? data.opponent.username : 'Adversaire';
+      this.opponentRating = data.opponent ? data.opponent.rating : '?';
+      this.opponentRegion = data.opponent ? data.opponent.region : '';
+      this.gameTime = data.time;
+      this.gameInc = data.inc;
+      this.connected = true;
+      this._setupSocketEvents(this.lobbySocket);
+      if (this.onMatch) this.onMatch(data);
+    },
+
+    async quickMatch({ time, inc } = {}) {
+      await this.connectLobby();
+      this.role = 'quick';
+      this.lobbySocket.emit('matchmaking_join', { time: time || 10, inc: inc || 0 });
+    },
+
+    leaveQueue() {
+      if (this.lobbySocket) this.lobbySocket.emit('matchmaking_leave');
+    },
+
+    async challenge(username, time, inc) {
+      await this.connectLobby();
+      this.lobbySocket.emit('challenge_friend', { username, time: time || 10, inc: inc || 0 });
+    },
+
+    async acceptChallenge(from, time, inc) {
+      await this.connectLobby();
+      this.lobbySocket.emit('challenge_accept', { from, time: time || 10, inc: inc || 0 });
+    },
+
+    declineChallenge(from) {
+      if (this.lobbySocket) this.lobbySocket.emit('challenge_decline', { from });
+    },
+
+    sendLobbyChat(text) {
+      if (this.lobbySocket && text) this.lobbySocket.emit('lobby_message', { text });
+    },
+
+    sendDrawOffer() {
+      if (this.socket && this.myId) this.socket.emit('draw_offer', { code: this.myId });
+    },
+
+    sendDrawAccept() {
+      if (this.socket && this.myId) this.socket.emit('draw_accept', { code: this.myId });
+    },
+
+    sendDrawDecline() {
+      if (this.socket && this.myId) this.socket.emit('draw_decline', { code: this.myId });
+    },
+
+    sendRematch() {
+      if (this.socket && this.myId) this.socket.emit('rematch_request', { code: this.myId });
+    },
+
+    declineRematch() {
+      if (this.socket && this.myId) this.socket.emit('rematch_decline', { code: this.myId });
+    },
+
+    leaveGame(code) {
+      const room = code || this.myId;
+      if (!room) return;
+      try {
+        if (this.socket) this.socket.emit('leave_room', { code: room });
+        if (this.socket && this.socket !== this.lobbySocket) this.socket.disconnect();
+      } catch (e) {}
+      if (!code || this.myId === code) {
+        this.socket = null;
+        this.myId = null;
+        this.connected = false;
+      }
+      this.onMove = null; this.onChat = null; this.onResign = null; this.onDisconnect = null;
+      this.onDrawOffered = null; this.onDrawAccepted = null; this.onGameOver = null;
+      this.onRematchOffered = null;
     },
 
     sendMove(moveObj) {
@@ -295,16 +430,24 @@
       }
     },
 
-    disconnect() {
+    _resetGameSocket() {
       try {
-        if (this.socket) this.socket.disconnect();
+        if (this.myId && this.socket) this.socket.emit('leave_room', { code: this.myId });
+        if (this.socket && this.socket !== this.lobbySocket) this.socket.disconnect();
         if (this.conn) this.conn.close();
         if (this.peer) this.peer.destroy();
       } catch (e) {}
       this.socket = null;
       this.conn = null;
       this.peer = null;
+      this.myId = null;
       this.connected = false;
+    },
+
+    disconnect() {
+      this._resetGameSocket();
+      if (this.lobbySocket) { try { this.lobbySocket.disconnect(); } catch (e) {} }
+      this.lobbySocket = null;
     }
   };
 

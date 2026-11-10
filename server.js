@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 8080;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'masterchess2026';
 
 /* ---------- Base de données Abstraction (PostgreSQL ou JSON file-based) ---------- */
-let dbQuery, dbGet, dbRun;
+let dbQuery, dbGet, dbRun, jsonRead, jsonWrite;
 const usePostgres = !!process.env.DATABASE_URL;
 
 if (usePostgres) {
@@ -56,6 +56,7 @@ if (usePostgres) {
             password_hash: bcrypt.hashSync('masterchess2026', 10),
             role: 'admin',
             is_pro: true,
+            region: 'CD',
             rating: 2000,
             wins: 15,
             losses: 2,
@@ -68,6 +69,7 @@ if (usePostgres) {
             password_hash: bcrypt.hashSync('player123', 10),
             role: 'user',
             is_pro: false,
+            region: 'FR',
             rating: 1850,
             wins: 42,
             losses: 18,
@@ -80,6 +82,7 @@ if (usePostgres) {
             password_hash: bcrypt.hashSync('player123', 10),
             role: 'user',
             is_pro: false,
+            region: 'CD',
             rating: 1620,
             wins: 28,
             losses: 14,
@@ -87,7 +90,8 @@ if (usePostgres) {
             created_at: new Date().toISOString()
           }
         ],
-        games: []
+        games: [],
+        friendships: []
       };
       fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2));
       return initial;
@@ -95,13 +99,15 @@ if (usePostgres) {
     try {
       return JSON.parse(fs.readFileSync(dbFile, 'utf8'));
     } catch (e) {
-      return { users: [], games: [] };
+      return { users: [], games: [], friendships: [] };
     }
   };
 
   const writeDb = (data) => {
     fs.writeFileSync(dbFile, JSON.stringify(data, null, 2));
   };
+  jsonRead = readDb;
+  jsonWrite = writeDb;
 
   dbQuery = async (sql, params = []) => {
     const db = readDb();
@@ -139,6 +145,7 @@ if (usePostgres) {
         username: params[0],
         password_hash: params[1],
         role: params[2] || 'user',
+        region: params[3] || '',
         is_pro: params[2] === 'admin',
         rating: 1200,
         wins: 0,
@@ -149,6 +156,13 @@ if (usePostgres) {
       db.users.push(newUser);
       writeDb(db);
       return { changes: 1, id: newUser.id };
+    } else if (sql.includes('UPDATE users SET region = ? WHERE id = ?')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[1]));
+      if (u) {
+        u.region = params[0] || '';
+        writeDb(db);
+      }
+      return { changes: 1 };
     } else if (sql.includes('DELETE FROM users WHERE id = ?')) {
       const prevLen = db.users.length;
       db.users = db.users.filter(u => Number(u.id) !== Number(params[0]));
@@ -229,16 +243,17 @@ if (usePostgres) {
           wins INTEGER NOT NULL DEFAULT 0,
           losses INTEGER NOT NULL DEFAULT 0,
           draws INTEGER NOT NULL DEFAULT 0,
+          region TEXT DEFAULT '',
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-        `);
-        // S'assurer que la colonne is_pro existe si la table a été créée avant
-        try {
+      `);
+      try {
         await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pro BOOLEAN DEFAULT FALSE;');
-        } catch (e) {
-        // Ignorer si déjà existant ou non supporté
-        }
-        // Créer admin par défaut si inexistant
+        await dbRun("ALTER TABLE users ADD COLUMN IF NOT EXISTS region TEXT DEFAULT '';");
+      } catch (e) {
+        // Colonnes déjà présentes ou base ancienne
+      }
+      await dbRun(`
         CREATE TABLE IF NOT EXISTS games (
           id SERIAL PRIMARY KEY,
           white_username TEXT,
@@ -248,6 +263,17 @@ if (usePostgres) {
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      await dbRun(`
+        CREATE TABLE IF NOT EXISTS friendships (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          friend_id INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, friend_id)
+        );
+      `);
+      // Créer admin par défaut si inexistant
       // Créer admin par défaut si inexistant
       const adminExists = await dbGet('SELECT id FROM users WHERE username = ?', ['admin']);
       if (!adminExists) {
@@ -353,7 +379,8 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, password } = req.body || {};
+    const { username, password, region } = req.body || {};
+    const safeRegion = /^[A-Z]{2}$/.test(String(region || '').toUpperCase()) ? String(region).toUpperCase() : '';
     if (!username || !password || username.length < 3 || password.length < 4) {
       return res.status(400).json({ error: 'Pseudo (3+ car.) et mot de passe (4+ car.) requis.' });
     }
@@ -365,12 +392,12 @@ app.post('/api/register', async (req, res) => {
 
     const hash = bcrypt.hashSync(password, 10);
     const role = (username.toLowerCase() === 'admin') ? 'admin' : 'user';
-    await dbRun('INSERT INTO users (username, password_hash, role) VALUES (?,?,?)', [username, hash, role]);
-    const user = await dbGet('SELECT id, username, role, rating, wins, losses, draws FROM users WHERE username = ?', [username]);
+    await dbRun('INSERT INTO users (username, password_hash, role, region) VALUES (?,?,?,?)', [username, hash, role, safeRegion]);
+    const user = await dbGet('SELECT id, username, role, rating, wins, losses, draws, is_pro, region FROM users WHERE username = ?', [username]);
 
     const token = signToken(user);
     res.cookie('masterchess_token', token, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
-    res.json({ user, token });
+    res.json({ user: publicUser(user), token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur lors de l’inscription.' });
@@ -384,7 +411,7 @@ app.post('/api/login', async (req, res) => {
     if (!row || !bcrypt.compareSync(password || '', row.password_hash)) {
       return res.status(401).json({ error: 'Identifiants incorrects.' });
     }
-    const token = signToken(row);
+    const token = signToken({ id: row.id, username: row.username, role: row.role || 'user' });
     res.cookie('masterchess_token', token, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
     res.json({
       user: {
@@ -392,6 +419,8 @@ app.post('/api/login', async (req, res) => {
         username: row.username,
         role: row.role || 'user',
         rating: row.rating,
+        is_pro: row.is_pro,
+        region: row.region || '',
         wins: row.wins,
         losses: row.losses,
         draws: row.draws
@@ -411,14 +440,14 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/me', async (req, res) => {
   if (!req.user) return res.json({ user: null });
-  const row = await dbGet('SELECT id, username, role, rating, wins, losses, draws, created_at FROM users WHERE id = ?', [req.user.id]);
-  res.json({ user: row || null });
+  const row = await dbGet('SELECT id, username, role, rating, wins, losses, draws, is_pro, region, created_at FROM users WHERE id = ?', [req.user.id]);
+  res.json({ user: publicUser(row) });
 });
 
 app.get('/api/profile/:username', async (req, res) => {
   try {
     const username = req.params.username;
-    const user = await dbGet('SELECT id, username, role, rating, wins, losses, draws, created_at FROM users WHERE username = ?', [username]);
+    const user = await dbGet('SELECT id, username, role, rating, wins, losses, draws, is_pro, region, created_at FROM users WHERE username = ?', [username]);
     if (!user) return res.status(404).json({ error: 'Utilisateur introuvable.' });
 
     const games = await dbQuery(
@@ -426,7 +455,7 @@ app.get('/api/profile/:username', async (req, res) => {
       [username, username]
     );
 
-    res.json({ user, games });
+    res.json({ user: publicUser(user), games });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur chargement profil.' });
@@ -435,11 +464,212 @@ app.get('/api/profile/:username', async (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const rows = await dbQuery('SELECT username, rating, wins, losses, draws, role FROM users ORDER BY rating DESC LIMIT 25');
-    res.json({ leaderboard: rows });
+    const rows = await dbQuery('SELECT username, rating, wins, losses, draws, role, is_pro, region FROM users ORDER BY rating DESC LIMIT 25');
+    res.json({ leaderboard: (rows || []).map(publicUser) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ leaderboard: [] });
+  }
+});
+
+/* ============================================================
+   RÉSEAU SOCIAL : AMIS, PRÉSENCE, COMMUNAUTÉ
+   ============================================================ */
+function publicUser(u) {
+  if (!u) return null;
+  return {
+    id: u.id, username: u.username, role: u.role || 'user',
+    rating: u.rating || 1200, wins: u.wins || 0, losses: u.losses || 0,
+    draws: u.draws || 0, is_pro: !!u.is_pro, region: u.region || '',
+    created_at: u.created_at
+  };
+}
+
+async function friendshipRows(userId) {
+  if (usePostgres) {
+    return await dbQuery(
+      `SELECT f.id, f.user_id, f.friend_id, f.status, f.created_at,
+              u.username, u.rating, u.region, u.is_pro, u.role
+         FROM friendships f
+         JOIN users u ON u.id = CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END
+        WHERE f.user_id = ? OR f.friend_id = ?
+        ORDER BY f.id DESC`,
+      [userId, userId, userId]
+    );
+  }
+  const db = jsonRead();
+  return (db.friendships || [])
+    .filter(f => Number(f.user_id) === Number(userId) || Number(f.friend_id) === Number(userId))
+    .sort((a, b) => b.id - a.id)
+    .map(f => {
+      const otherId = Number(f.user_id) === Number(userId) ? f.friend_id : f.user_id;
+      const u = db.users.find(x => Number(x.id) === Number(otherId)) || {};
+      return {
+        id: f.id, user_id: f.user_id, friend_id: f.friend_id, status: f.status,
+        created_at: f.created_at, username: u.username || 'Joueur',
+        rating: u.rating || 1200, region: u.region || '', is_pro: !!u.is_pro, role: u.role || 'user'
+      };
+    });
+}
+
+function onlineList() {
+  const seen = new Set();
+  const list = [];
+  for (const info of onlineUsers.values()) {
+    const key = info.userId ? 'u' + info.userId : 's' + info.socketId;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    list.push(info);
+  }
+  return list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+}
+
+app.get('/api/friends', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Connectez-vous pour gérer vos amis.' });
+  try {
+    const rows = await friendshipRows(req.user.id);
+    const decorate = (r) => ({
+      id: r.id, username: r.username, rating: r.rating, region: r.region || '',
+      is_pro: !!r.is_pro, role: r.role || 'user', since: r.created_at,
+      online: onlineList().some(p => p.username === r.username)
+    });
+    res.json({
+      friends: rows.filter(r => r.status === 'accepted').map(decorate),
+      incoming: rows.filter(r => r.status === 'pending' && Number(r.friend_id) === Number(req.user.id)).map(decorate),
+      outgoing: rows.filter(r => r.status === 'pending' && Number(r.user_id) === Number(req.user.id)).map(decorate)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur chargement des amis.' });
+  }
+});
+
+app.post('/api/friends/request', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Connectez-vous pour ajouter un ami.' });
+  try {
+    const { username } = req.body || {};
+    const target = await dbGet('SELECT * FROM users WHERE username = ?', [String(username || '')]);
+    if (!target) return res.status(404).json({ error: 'Joueur introuvable.' });
+    if (Number(target.id) === Number(req.user.id)) return res.status(400).json({ error: 'Vous ne pouvez pas vous ajouter vous-même.' });
+
+    const rows = await friendshipRows(req.user.id);
+    const existing = rows.find(r => r.username && r.username.toLowerCase() === target.username.toLowerCase());
+    if (existing) {
+      if (existing.status === 'accepted') return res.status(409).json({ error: 'Vous êtes déjà amis.' });
+      if (Number(existing.friend_id) === Number(req.user.id)) {
+        return res.status(409).json({ error: 'Cette personne vous a déjà envoyé une demande. Acceptez-la.' });
+      }
+      return res.status(409).json({ error: 'Demande déjà envoyée.' });
+    }
+
+    if (usePostgres) {
+      await dbRun("INSERT INTO friendships (user_id, friend_id, status) VALUES (?,?, 'pending')", [req.user.id, target.id]);
+    } else {
+      const db = jsonRead();
+      if (!db.friendships) db.friendships = [];
+      db.friendships.push({
+        id: db.friendships.length ? Math.max(...db.friendships.map(f => f.id || 0)) + 1 : 1,
+        user_id: req.user.id, friend_id: target.id, status: 'pending',
+        created_at: new Date().toISOString()
+      });
+      jsonWrite(db);
+    }
+    const from = (await dbGet('SELECT rating, region FROM users WHERE id = ?', [req.user.id])) || {};
+    io.to('user:' + target.id).emit('friend_request', {
+      from: req.user.username, rating: from.rating || 1200, region: from.region || ''
+    });
+    res.json({ ok: true, message: 'Demande envoyée.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur envoi demande.' });
+  }
+});
+
+app.post('/api/friends/accept', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Non connecté.' });
+  try {
+    const { id } = req.body || {};
+    const rows = await friendshipRows(req.user.id);
+    const row = rows.find(r => Number(r.id) === Number(id));
+    if (!row || row.status !== 'pending' || Number(row.friend_id) !== Number(req.user.id)) {
+      return res.status(404).json({ error: 'Demande introuvable.' });
+    }
+    if (usePostgres) {
+      await dbRun("UPDATE friendships SET status = 'accepted' WHERE id = ?", [id]);
+    } else {
+      const db = jsonRead();
+      const f = (db.friendships || []).find(x => Number(x.id) === Number(id));
+      if (f) { f.status = 'accepted'; jsonWrite(db); }
+    }
+    io.to('user:' + row.user_id).emit('friend_accepted', { by: req.user.username });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur acceptation.' });
+  }
+});
+
+app.post('/api/friends/remove', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Non connecté.' });
+  try {
+    const { id } = req.body || {};
+    if (usePostgres) {
+      await dbRun('DELETE FROM friendships WHERE id = ? AND (user_id = ? OR friend_id = ?)', [id, req.user.id, req.user.id]);
+    } else {
+      const db = jsonRead();
+      db.friendships = (db.friendships || []).filter(f => !(Number(f.id) === Number(id) && (Number(f.user_id) === Number(req.user.id) || Number(f.friend_id) === Number(req.user.id))));
+      jsonWrite(db);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur suppression.' });
+  }
+});
+
+app.get('/api/community/online', (req, res) => {
+  res.json({ players: onlineList() });
+});
+
+app.get('/api/community/players', async (req, res) => {
+  try {
+    const users = await dbQuery('SELECT id, username, rating, wins, losses, draws, is_pro, region FROM users ORDER BY rating DESC LIMIT 200');
+    const online = onlineList();
+    const q = String(req.query.q || '').toLowerCase();
+    const region = String(req.query.region || '').toUpperCase();
+    const players = users
+      .filter(u => (!q || u.username.toLowerCase().includes(q)) && (!region || u.region === region))
+      .slice(0, 60)
+      .map(u => ({ ...publicUser(u), online: online.some(p => p.username === u.username) }));
+    res.json({ players });
+  } catch (err) {
+    console.error(err);
+    res.json({ players: [] });
+  }
+});
+
+app.get('/api/community/leaderboard', async (req, res) => {
+  try {
+    const region = String(req.query.region || '').toUpperCase();
+    const users = await dbQuery('SELECT id, username, rating, wins, losses, draws, is_pro, region FROM users ORDER BY rating DESC LIMIT 200');
+    const leaderboard = users.filter(u => !region || u.region === region).slice(0, 20).map(publicUser);
+    res.json({ leaderboard });
+  } catch (err) {
+    console.error(err);
+    res.json({ leaderboard: [] });
+  }
+});
+
+app.post('/api/profile/region', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Connectez-vous.' });
+  try {
+    const region = String((req.body || {}).region || '').toUpperCase();
+    if (region && !/^[A-Z]{2}$/.test(region)) return res.status(400).json({ error: 'Région invalide.' });
+    await dbRun('UPDATE users SET region = ? WHERE id = ?', [region, req.user.id]);
+    res.json({ ok: true, region });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur mise à jour région.' });
   }
 });
 
@@ -461,8 +691,8 @@ app.post('/api/admin/login', (req, res) => {
 // Récupérer la liste des utilisateurs pour le panneau admin
 app.get('/api/admin/users', adminMiddleware, async (req, res) => {
   try {
-    const users = await dbQuery('SELECT id, username, role, is_pro, rating, wins, losses, draws, created_at FROM users ORDER BY id ASC');
-    res.json({ users: users || [] });
+    const users = await dbQuery('SELECT id, username, role, is_pro, rating, wins, losses, draws, region, created_at FROM users ORDER BY id ASC');
+    res.json({ users: (users || []).map(publicUser) });
   } catch (err) {
     console.error('Erreur get users admin:', err);
     res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs.' });
@@ -533,8 +763,8 @@ app.post('/api/admin/users/create', adminMiddleware, async (req, res) => {
     const hash = bcrypt.hashSync(password, 10);
     const userRole = role === 'admin' ? 'admin' : 'user';
     await dbRun('INSERT INTO users (username, password_hash, role) VALUES (?,?,?)', [username, hash, userRole]);
-    const created = await dbGet('SELECT id, username, role, rating, wins, losses, draws, created_at FROM users WHERE username = ?', [username]);
-    res.json({ ok: true, user: created });
+    const created = await dbGet('SELECT id, username, role, rating, wins, losses, draws, region, created_at FROM users WHERE username = ?', [username]);
+    res.json({ ok: true, user: publicUser(created) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur création utilisateur.' });
@@ -605,6 +835,9 @@ async function updateStatsAndRating(whiteId, blackId, result) {
 }
 
 async function finishGame(code, room, result) {
+  if (room.finished) return;
+  room.finished = true;
+  room.result = result;
   try {
     await dbRun(
       'INSERT INTO games (white_username, black_username, result, pgn) VALUES (?,?,?,?)',
@@ -614,21 +847,92 @@ async function finishGame(code, room, result) {
   } catch (e) {
     console.error('Erreur finishGame:', e);
   }
-  rooms.delete(code);
+  io.to(code).emit('game_over', { result, reason: 'Partie terminée' });
+  // Conserver la salle quelques minutes pour permettre la revanche.
+  setTimeout(() => {
+    const r = rooms.get(code);
+    if (r && r.finished) rooms.delete(code);
+  }, 10 * 60 * 1000);
 }
 
-io.on('connection', (socket) => {
+const onlineUsers = new Map();
+const matchmakingQueue = [];
+
+function removeFromQueue(socketId) {
+  for (let i = matchmakingQueue.length - 1; i >= 0; i--) {
+    if (matchmakingQueue[i].socketId === socketId) matchmakingQueue.splice(i, 1);
+  }
+}
+
+function broadcastPresence() {
+  io.to('lobby').emit('presence_update', { players: onlineList() });
+}
+
+function startMatchedGame(whiteSocket, blackSocket, time, inc, type) {
+  if (!whiteSocket || !blackSocket) return false;
+  const code = genCode();
+  const chess = new Chess();
+  const mk = (sock) => ({
+    socketId: sock.id,
+    username: sock.data.profile.username,
+    userId: sock.data.profile.userId,
+    rating: sock.data.profile.rating,
+    region: sock.data.profile.region || ''
+  });
+  const room = {
+    chess, white: mk(whiteSocket), black: mk(blackSocket),
+    time: Number(time) || 10, inc: Number(inc) || 0,
+    type: type || 'quick', finished: false, rematchVotes: new Set(),
+    createdAt: Date.now()
+  };
+  rooms.set(code, room);
+  for (const [sock, color] of [[whiteSocket, 'w'], [blackSocket, 'b']]) {
+    sock.join(code);
+    sock.data.roomCode = code;
+    const opp = color === 'w' ? room.black : room.white;
+    sock.emit('match_found', {
+      code, color, time: room.time, inc: room.inc, type: room.type,
+      opponent: { username: opp.username, rating: opp.rating, region: opp.region }
+    });
+  }
+  return true;
+}
+
+io.on('connection', async (socket) => {
   const user = getUserFromSocket(socket);
   socket.data.username = user ? user.username : 'Joueur-' + socket.id.slice(0, 4);
   socket.data.userId = user ? user.id : null;
+  socket.data.profile = {
+    socketId: socket.id, userId: socket.data.userId,
+    username: socket.data.username, rating: 1200, region: ''
+  };
+
+  if (user) {
+    try {
+      const row = await dbGet('SELECT username, rating, region FROM users WHERE id = ?', [user.id]);
+      if (row) {
+        socket.data.profile.username = row.username;
+        socket.data.profile.rating = row.rating || 1200;
+        socket.data.profile.region = row.region || '';
+      }
+    } catch (e) {}
+    socket.join('user:' + user.id);
+  }
+  socket.join('lobby');
+  onlineUsers.set(socket.id, socket.data.profile);
+  broadcastPresence();
 
   socket.on('create_room', () => {
     const code = genCode();
     const chess = new Chess();
     rooms.set(code, {
       chess,
-      white: { socketId: socket.id, username: socket.data.username, userId: socket.data.userId },
-      black: null
+      white: {
+        socketId: socket.id, username: socket.data.profile.username,
+        userId: socket.data.profile.userId, rating: socket.data.profile.rating,
+        region: socket.data.profile.region
+      },
+      black: null, time: 10, inc: 0, type: 'code', finished: false, rematchVotes: new Set()
     });
     socket.join(code);
     socket.data.roomCode = code;
@@ -640,16 +944,85 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return socket.emit('room_error', { message: 'Partie introuvable ou expirée.' });
     if (room.black) return socket.emit('room_error', { message: 'Partie déjà complète.' });
-    room.black = { socketId: socket.id, username: socket.data.username, userId: socket.data.userId };
+    room.black = {
+      socketId: socket.id, username: socket.data.profile.username,
+      userId: socket.data.profile.userId, rating: socket.data.profile.rating,
+      region: socket.data.profile.region
+    };
     socket.join(code);
     socket.data.roomCode = code;
-    socket.emit('room_joined', { code, color: 'b', fen: room.chess.fen(), opponent: room.white.username });
-    io.to(room.white.socketId).emit('opponent_joined', { username: socket.data.username });
+    socket.emit('room_joined', {
+      code, color: 'b', fen: room.chess.fen(),
+      opponent: room.white.username,
+      opponentRating: room.white.rating,
+      opponentRegion: room.white.region
+    });
+    io.to(room.white.socketId).emit('opponent_joined', {
+      username: socket.data.profile.username,
+      rating: socket.data.profile.rating,
+      region: socket.data.profile.region
+    });
+  });
+
+  socket.on('matchmaking_join', ({ time, inc }) => {
+    removeFromQueue(socket.id);
+    const t = Number(time) || 10;
+    const i = Number(inc) || 0;
+    const entry = {
+      socketId: socket.id, userId: socket.data.profile.userId,
+      username: socket.data.profile.username, rating: socket.data.profile.rating,
+      region: socket.data.profile.region, time: t, inc: i, joinedAt: Date.now()
+    };
+    matchmakingQueue.push(entry);
+    socket.emit('queue_status', { status: 'waiting', players: matchmakingQueue.length });
+
+    const candidates = matchmakingQueue.filter(e =>
+      e.socketId !== socket.id && e.time === t && e.inc === i && io.sockets.sockets.get(e.socketId)
+    );
+    if (!candidates.length) return;
+    candidates.sort((a, b) => Math.abs(a.rating - entry.rating) - Math.abs(b.rating - entry.rating));
+    const opp = candidates[0];
+    removeFromQueue(socket.id);
+    removeFromQueue(opp.socketId);
+    const oppSocket = io.sockets.sockets.get(opp.socketId);
+    if (oppSocket) startMatchedGame(oppSocket, socket, t, i, 'quick');
+  });
+
+  socket.on('matchmaking_leave', () => removeFromQueue(socket.id));
+
+  socket.on('challenge_friend', ({ username, time, inc }) => {
+    const target = onlineList().find(p => p.username && p.username.toLowerCase() === String(username || '').toLowerCase());
+    if (!target || target.socketId === socket.id || (target.userId && target.userId === socket.data.userId)) {
+      return socket.emit('challenge_error', { message: 'Ce joueur n’est pas en ligne.' });
+    }
+    io.to(target.socketId).emit('challenge_received', {
+      from: socket.data.profile.username,
+      fromRating: socket.data.profile.rating,
+      fromRegion: socket.data.profile.region,
+      time: Number(time) || 10,
+      inc: Number(inc) || 0
+    });
+    socket.emit('challenge_sent', { to: target.username });
+  });
+
+  socket.on('challenge_accept', ({ from, time, inc }) => {
+    removeFromQueue(socket.id);
+    const target = onlineList().find(p => p.username && p.username.toLowerCase() === String(from || '').toLowerCase());
+    if (!target) return socket.emit('challenge_error', { message: 'Le joueur n’est plus en ligne.' });
+    const fromSocket = io.sockets.sockets.get(target.socketId);
+    if (!fromSocket) return socket.emit('challenge_error', { message: 'Le joueur n’est plus en ligne.' });
+    startMatchedGame(fromSocket, socket, Number(time) || 10, Number(inc) || 0, 'friend');
+  });
+
+  socket.on('challenge_decline', ({ from }) => {
+    const target = onlineList().find(p => p.username && p.username.toLowerCase() === String(from || '').toLowerCase());
+    if (target) io.to(target.socketId).emit('challenge_declined', { by: socket.data.profile.username });
+    removeFromQueue(socket.id);
   });
 
   socket.on('move', async ({ code, from, to, promotion }) => {
     const room = rooms.get(code);
-    if (!room || !room.black) return;
+    if (!room || !room.black || room.finished) return;
     const isWhite = room.white.socketId === socket.id;
     const isBlack = room.black.socketId === socket.id;
     if (!isWhite && !isBlack) return;
@@ -671,25 +1044,108 @@ io.on('connection', (socket) => {
 
   socket.on('resign', async ({ code }) => {
     const room = rooms.get(code);
-    if (!room || !room.black) return;
+    if (!room || !room.black || room.finished) return;
     const isWhite = room.white.socketId === socket.id;
+    const isBlack = room.black.socketId === socket.id;
+    if (!isWhite && !isBlack) return;
     const result = isWhite ? '0-1' : '1-0';
-    io.to(code).emit('opponent_resigned', { by: isWhite ? 'w' : 'b' });
+    socket.to(code).emit('opponent_resigned', { by: isWhite ? 'w' : 'b' });
     await finishGame(code, room, result);
   });
 
   socket.on('chat', ({ code, text }) => {
     const room = rooms.get(code);
     if (!room || !text) return;
-    const color = room.white.socketId === socket.id ? 'w' : 'b';
-    io.to(code).emit('chat', { from: color, username: socket.data.username, text: String(text).slice(0, 200) });
+    const isWhite = room.white.socketId === socket.id;
+    const isBlack = room.black && room.black.socketId === socket.id;
+    if (!isWhite && !isBlack) return;
+    const color = isWhite ? 'w' : 'b';
+    socket.to(code).emit('chat', {
+      from: color, username: socket.data.profile.username,
+      text: String(text).slice(0, 240), ts: Date.now()
+    });
+  });
+
+  socket.on('draw_offer', ({ code }) => {
+    const room = rooms.get(code);
+    if (!room || room.finished || !room.black) return;
+    const isWhite = room.white.socketId === socket.id;
+    const isBlack = room.black.socketId === socket.id;
+    if (!isWhite && !isBlack) return;
+    const other = isWhite ? room.black : room.white;
+    if (other) io.to(other.socketId).emit('draw_offered', { from: socket.data.profile.username });
+  });
+
+  socket.on('draw_accept', async ({ code }) => {
+    const room = rooms.get(code);
+    if (!room || room.finished || !room.black) return;
+    if (room.white.socketId !== socket.id && room.black.socketId !== socket.id) return;
+    io.to(code).emit('draw_accepted', {});
+    await finishGame(code, room, '1/2-1/2');
+  });
+
+  socket.on('draw_decline', ({ code }) => {
+    const room = rooms.get(code);
+    if (!room || !room.black) return;
+    const isWhite = room.white.socketId === socket.id;
+    const isBlack = room.black.socketId === socket.id;
+    if (!isWhite && !isBlack) return;
+    const other = isWhite ? room.black : room.white;
+    if (other) io.to(other.socketId).emit('draw_declined', { by: socket.data.profile.username });
+  });
+
+  socket.on('rematch_request', ({ code }) => {
+    const room = rooms.get(code);
+    if (!room || !room.finished || !room.black) return;
+    if (room.white.socketId !== socket.id && room.black.socketId !== socket.id) return;
+    room.rematchVotes.add(socket.id);
+    const otherId = room.white.socketId === socket.id ? room.black.socketId : room.white.socketId;
+    if (room.rematchVotes.size >= 2) {
+      const w = io.sockets.sockets.get(room.black.socketId);
+      const b = io.sockets.sockets.get(room.white.socketId);
+      room.rematchVotes.clear();
+      if (w && b) startMatchedGame(w, b, room.time, room.inc, 'rematch');
+    } else {
+      io.to(otherId).emit('rematch_offered', { from: socket.data.profile.username });
+      socket.emit('rematch_waiting', {});
+    }
+  });
+
+  socket.on('rematch_decline', ({ code }) => {
+    const room = rooms.get(code);
+    if (!room || !room.black) return;
+    const isWhite = room.white.socketId === socket.id;
+    const isBlack = room.black.socketId === socket.id;
+    if (!isWhite && !isBlack) return;
+    const other = isWhite ? room.black : room.white;
+    if (other) io.to(other.socketId).emit('rematch_declined', {});
+    room.rematchVotes.clear();
+  });
+
+  socket.on('leave_room', ({ code }) => {
+    if (code) socket.leave(code);
+    if (!code || socket.data.roomCode === code) socket.data.roomCode = null;
+  });
+
+  socket.on('lobby_message', ({ text }) => {
+    if (!text) return;
+    io.to('lobby').emit('lobby_message', {
+      username: socket.data.profile.username,
+      rating: socket.data.profile.rating,
+      region: socket.data.profile.region,
+      text: String(text).slice(0, 300),
+      ts: Date.now()
+    });
   });
 
   socket.on('disconnect', () => {
+    removeFromQueue(socket.id);
+    onlineUsers.delete(socket.id);
+    broadcastPresence();
     const code = socket.data.roomCode;
     if (!code) return;
     const room = rooms.get(code);
-    if (!room) return;
+    if (!room || room.finished) return;
     if (room.white.socketId === socket.id || (room.black && room.black.socketId === socket.id)) {
       io.to(code).emit('opponent_left');
     }

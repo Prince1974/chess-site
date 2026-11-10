@@ -29,6 +29,7 @@
       }, 200);
       // Statistiques : enregistrer la visite + mesure du temps actif
       Storage.recordVisit();
+      this._initSocial();
       setInterval(() => Storage.addActiveTime(30), 30000);
       // Envoyer à GA4 un événement de session
       window.addEventListener('beforeunload', () => {
@@ -40,8 +41,45 @@
       });
     },
 
+    _initSocial() {
+      if (!window.Online) return;
+      Online.onMatch = (data) => {
+        this.startMatchedGame(data);
+      };
+      Online.onChallenge = (data) => {
+        const label = (data.fromRegion && window.Countries ? Countries.flag(data.fromRegion) + ' ' : '') + data.from;
+        if (confirm(label + ' vous défie en ' + data.time + ' min. Accepter ?')) {
+          Online.acceptChallenge(data.from, data.time, data.inc);
+        } else {
+          Online.declineChallenge(data.from);
+        }
+      };
+      Online.onChallengeDeclined = () => { if (window.ChessUI) ChessUI.toast('Défi refusé', 'info'); };
+      Online.onChallengeError = (d) => { if (window.ChessUI) ChessUI.toast((d && d.message) || 'Défi impossible', 'error'); };
+      Online.onFriendRequest = (d) => { if (window.ChessUI) ChessUI.toast((d.from || 'Un joueur') + ' vous a envoyé une demande d’ami.', 'info', 4000); };
+      Online.onFriendAccepted = (d) => { if (window.ChessUI) ChessUI.toast((d.by || 'Un joueur') + ' a accepté votre demande d’ami !', 'success'); };
+      Online.onQueue = (d) => {
+        if (!window.ChessUI) return;
+        if (d.status === 'waiting') {
+          const qs = document.querySelector('#quickStatus');
+          if (qs) { qs.className = 'quick-match-status thinking'; qs.innerHTML = '<span class="queue-spinner"></span> Recherche d’un adversaire…'; }
+          ChessUI.toast('Recherche d’un adversaire…', 'info', 1800);
+        }
+        else if (d.status === 'rematch_waiting') ChessUI.toast('En attente de la revanche…', 'info');
+      };
+      setTimeout(() => { Online.connectLobby().catch(() => {}); }, 900);
+    },
+
+    startMatchedGame(data) {
+      const qs = document.querySelector('#quickStatus');
+      if (qs) { qs.className = 'quick-match-status'; qs.textContent = 'Adversaire trouvé !'; }
+      if (this.currentRoute !== 'play') this.navigate('play');
+      if (window.ChessUI) ChessUI.toast('Adversaire trouvé : ' + (data.opponent ? data.opponent.username : 'Joueur'), 'success');
+      this.startGame('online', { time: data.time || 10, increment: data.inc || 0, online: Online });
+    },
+
     _initRoot() {
-      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="profile"></section><section data-view="secret-dashboard"></section>';
+      document.getElementById('appRoot').innerHTML = '<section data-view="home"></section><section data-view="play"></section><section data-view="puzzles"></section><section data-view="learn"></section><section data-view="openings"></section><section data-view="analyze"></section><section data-view="community"></section><section data-view="profile"></section><section data-view="secret-dashboard"></section>';
       this.sections = {};
       document.querySelectorAll('section[data-view]').forEach(s => {
         this.sections[s.dataset.view] = s;
@@ -81,7 +119,7 @@
     },
 
     navigate(route, replace = false) {
-      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'profile', 'secret-dashboard'];
+      const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'community', 'profile', 'secret-dashboard'];
       if (!valid.includes(route)) route = 'home';
       // Fermer la nav mobile
       document.getElementById('mainNav').classList.remove('open');
@@ -346,6 +384,7 @@
         learn: () => this.renderLearn(sec),
         openings: () => this.renderOpenings(sec),
         analyze: () => this.renderAnalyze(sec),
+        community: () => this.renderCommunity(sec),
         profile: () => this.renderProfile(sec),
         'secret-dashboard': () => this.renderAdmin(sec)
       };
@@ -360,7 +399,8 @@
       const proBadge = (Storage.isPro() && !Storage.isAdmin()) ? '<span class="badge badge-accent" style="font-size:10px;padding:2px 4px;margin-left:4px">💎 Pro</span>' : '';
       const streakBadge = (streak && streak.count > 1) ? `<span style="font-size:11px;margin-left:4px">🔥${streak.count}</span>` : '';
 
-      document.getElementById('userName').innerHTML = `${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${proBadge}${adminBadge}`;
+      const countryFlag = (p.region && window.Countries) ? `<span class="user-flag" title="${Countries.name(p.region)}">${Countries.flag(p.region)}</span> ` : '';
+      document.getElementById('userName').innerHTML = `${countryFlag}${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${proBadge}${adminBadge}`;
       
       const avatarEl = document.getElementById('avatarLetter');
       if (p.photo) {
@@ -424,6 +464,7 @@
           <button class="btn btn-cta" data-go="play">♟ Jouer maintenant</button>
           <button class="btn btn-blue" data-go="puzzles">🧩 Puzzles tactiques</button>
           <button class="btn" data-go="learn">📚 Continuer l'apprentissage</button>
+          <button class="btn btn-secondary" data-go="community">🌍 Rejoindre le club</button>
         </div>
         <div class="hero-trust">
           <span>🔥 Série <b>${streak.count} jour${streak.count > 1 ? 's' : ''}</b></span>
@@ -624,7 +665,8 @@
       const featuresGrid = features.querySelector('.features');
       const items = [
         { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez un moteur à 10 niveaux de difficulté progressifs.", route: 'play' },
-        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC / Socket.io).', route: 'play', online: true },
+        { icon: '⚡', title: 'Matchmaking automatique', desc: 'Trouvez un adversaire en un clic, sans code, avec chat et revanche.', route: 'play', online: true },
+        { icon: '🌍', title: 'Communauté mondiale', desc: 'Amis, drapeaux, salon du club et rencontres près de chez vous.', route: 'community' },
         { icon: '🧩', title: 'Puzzles & Rush', desc: `${puzzles.length} exercices tactiques classés et le mode Puzzle Rush 3 min.`, route: 'puzzles' },
         { icon: '📚', title: 'Académie interactive', desc: 'Cours guidés pas-à-pas avec un coach virtuel.', route: 'learn' },
         { icon: '📖', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs plans stratégiques.', route: 'openings' },
@@ -1071,6 +1113,19 @@
       const host = document.getElementById('modeContent');
       if (!host) return;
       host.innerHTML = `
+        <div class="quick-match-panel">
+          <div class="quick-match-copy">
+            <div class="eyebrow">Sans code · matchmaking instantané</div>
+            <h3>⚡ Partie automatique</h3>
+            <p class="text-secondary">Choisissez une cadence et nous trouvons un adversaire de votre niveau. Aucun code à partager.</p>
+          </div>
+          <div class="quick-match-action">
+            <div class="quick-cadence-label">Cadence sélectionnée : <b id="quickCadenceLabel">10 min</b></div>
+            <button class="btn btn-primary btn-lg" id="btnQuickMatch">Chercher un adversaire</button>
+            <button class="btn btn-secondary btn-sm" id="btnFindFriend">👥 Défier un ami</button>
+          </div>
+        </div>
+        <div id="quickStatus" class="quick-match-status"></div>
         <div class="online-forge">
           <div class="online-col">
             <div class="eyebrow">Héberger</div>
@@ -1115,6 +1170,8 @@
           host.querySelectorAll('.cadence-card').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
           t = parseInt(el.dataset.time, 10); inc = parseInt(el.dataset.inc, 10);
+          const lbl = host.querySelector('#quickCadenceLabel');
+          if (lbl) lbl.textContent = el.querySelector('b').textContent + (inc ? '+' + inc : '');
         });
       });
 
@@ -1125,6 +1182,21 @@
         this._updateUserChip();
         return name;
       };
+
+      host.querySelector('#btnFindFriend').addEventListener('click', () => this.navigate('community'));
+
+      host.querySelector('#btnQuickMatch').addEventListener('click', async () => {
+        setName();
+        const qs = host.querySelector('#quickStatus');
+        qs.className = 'quick-match-status thinking';
+        qs.innerHTML = '<span class="queue-spinner"></span> Recherche d’un adversaire ' + t + ' min…';
+        try {
+          await Online.quickMatch({ time: t, inc });
+        } catch (e) {
+          qs.className = 'quick-match-status error';
+          qs.textContent = 'Matchmaking indisponible : ' + e.message;
+        }
+      });
 
       host.querySelector('#btnHost').addEventListener('click', async () => {
         setName();
@@ -1198,20 +1270,38 @@
           }
         } catch (e) {}
       };
-      Online.onChat = null;
+      Online.onChat = (text, username) => {
+        game.addChatMessage(text, username || Online.opponentName, false);
+      };
       Online.onResign = () => {
         game._endGame({ result: game.playerColor === 'w' ? '1-0' : '0-1', reason: 'Abandon adverse' });
       };
-      Online.onDrawOffer = () => {
+      Online.onDrawOffered = () => {
         if (confirm('Votre adversaire propose nulle. Accepter ?')) {
           Online.sendDrawAccept();
           game._endGame({ result: '½-½', reason: 'Nulle par accord' });
         } else {
-          Online.sendDrawDecline && Online.sendDrawDecline();
+          Online.sendDrawDecline();
         }
       };
       Online.onDrawAccepted = () => {
         game._endGame({ result: '½-½', reason: 'Nulle par accord' });
+      };
+      Online.onDrawDeclined = () => {
+        if (window.ChessUI) ChessUI.toast('Proposition de nulle refusée', 'info');
+      };
+      Online.onGameOver = (d) => {
+        if (!game.gameOver) game._endGame({ result: d.result, reason: 'Partie terminée' });
+      };
+      Online.onRematchOffered = (from) => {
+        if (confirm((from || 'Votre adversaire') + ' propose une revanche. Accepter ?')) {
+          Online.sendRematch();
+        } else {
+          Online.declineRematch();
+        }
+      };
+      Online.onRematchDeclined = () => {
+        if (window.ChessUI) ChessUI.toast('Revanche refusée', 'info');
       };
       // Modifier le bouton abandon pour envoyer un resign en ligne
       const resignBtn = game.sidePanel.querySelector('#btnResign');
@@ -1276,6 +1366,12 @@
     },
 
     // ===================== PROFIL =====================
+    renderCommunity(sec) {
+      sec.innerHTML = '';
+      if (window.Social) Social.render(sec);
+      else sec.innerHTML = '<div class="card center text-muted">Module Communauté non chargé.</div>';
+    },
+
     renderProfile(sec) {
       sec.innerHTML = '';
       const p = Storage.getProfile();
@@ -1343,9 +1439,29 @@
       if (jwtToken && p.username) {
         authCard.innerHTML = `
           <h3 class="mb-10">👤 Compte en Ligne</h3>
-          <p>Connecté en tant que <b>${p.username}</b></p>
+          <p>Connecté en tant que <b>${p.username}</b> ${p.region && window.Countries ? `<span class="badge badge-blue">${Countries.flag(p.region)} ${Countries.name(p.region)}</span>` : ''}</p>
+          <div class="profile-region-edit">
+            <label class="text-muted" for="profileRegionSelect">Pays / région du club</label>
+            <select class="input" id="profileRegionSelect">${Countries.options(p.region || '', true)}</select>
+            <button class="btn btn-secondary btn-sm" id="btnSaveRegion">Enregistrer</button>
+          </div>
           <button class="btn btn-danger btn-sm mt-10" id="btnLogoutAcc">Se Déconnecter</button>
         `;
+        authCard.querySelector('#btnSaveRegion').addEventListener('click', async () => {
+          const region = authCard.querySelector('#profileRegionSelect').value;
+          Storage.updateProfile({ region });
+          try {
+            await fetch((backendUrl || '') + '/api/profile/region', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('masterchess_jwt') || '') },
+              credentials: 'include',
+              body: JSON.stringify({ region })
+            });
+          } catch (e) {}
+          ChessUI.toast('Région enregistrée', 'success');
+          this.renderProfile(sec);
+          this._updateUserChip();
+        });
         authCard.querySelector('#btnLogoutAcc').addEventListener('click', async () => {
           try { await fetch((backendUrl || '') + '/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
           localStorage.removeItem('masterchess_jwt');
@@ -1362,6 +1478,10 @@
             <input class="input" id="authUsernameInput" placeholder="Nom d'utilisateur">
             <input class="input" type="password" id="authPasswordInput" placeholder="Mot de passe">
           </div>
+          <div class="mt-10">
+            <label class="text-muted" style="font-size:12px" for="authRegionInput">Votre pays / région (drapeau affiché dans le club)</label>
+            <select class="input mt-5" id="authRegionInput">${Countries.options(Storage.getProfile().region || '', true)}</select>
+          </div>
           <div class="flex gap-10 mt-10">
             <button class="btn btn-primary" id="btnLoginAcc">Se Connecter</button>
             <button class="btn" id="btnRegisterAcc">S'inscrire</button>
@@ -1371,6 +1491,7 @@
         const doAuth = async (action) => {
           const u = authCard.querySelector('#authUsernameInput').value.trim();
           const pass = authCard.querySelector('#authPasswordInput').value;
+          const region = authCard.querySelector('#authRegionInput').value;
           const msgEl = authCard.querySelector('#authMsg');
           msgEl.textContent = 'Connexion...';
           try {
@@ -1378,12 +1499,12 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ username: u, password: pass })
+              body: JSON.stringify({ username: u, password: pass, region })
             });
             const data = await res.json();
             if (!res.ok) { msgEl.textContent = data.error || 'Erreur.'; return; }
             if (data.token) localStorage.setItem('masterchess_jwt', data.token);
-            Storage.updateProfile({ name: data.user.username, username: data.user.username, avatar: data.user.username.charAt(0) });
+            Storage.updateProfile({ name: data.user.username, username: data.user.username, avatar: data.user.username.charAt(0), region: data.user.region || region });
             ChessUI.toast('Bienvenue, ' + data.user.username + ' !', 'success');
             this.renderProfile(sec);
             this._updateUserChip();
@@ -1395,6 +1516,19 @@
         authCard.querySelector('#btnRegisterAcc').addEventListener('click', () => doAuth('register'));
       }
       sec.appendChild(authCard);
+
+      const clubCard = document.createElement('div');
+      clubCard.className = 'card mb-20 club-cta-card';
+      clubCard.innerHTML = `
+        <div class="club-cta-copy">
+          <span class="story-kicker">LE CLUB MASTERCHESSIS</span>
+          <h3>${p.region && window.Countries ? Countries.flag(p.region) + ' ' : '🌍 '}Retrouvez vos amis et votre région</h3>
+          <p class="text-muted">Défiez vos amis, discutez dans le salon, rejoignez une rencontre près de chez vous et grimpez dans le classement régional.</p>
+        </div>
+        <button class="btn btn-primary" id="profileCommunityBtn">Ouvrir la communauté →</button>
+      `;
+      clubCard.querySelector('#profileCommunityBtn').addEventListener('click', () => this.navigate('community'));
+      sec.appendChild(clubCard);
 
       // Leaderboard Card
       const lbCard = document.createElement('div');

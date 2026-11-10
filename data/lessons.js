@@ -840,7 +840,367 @@
         "p": "Les Blancs offrent le pion c4 pour détourner le pion d5 et dominer le centre. Ce n'est pas un vrai sacrifice : le pion est presque toujours récupéré."
       }
     ]
-  }
+  },
+{
+  "id": 22,
+  "icon": "🎭",
+  "level": "Intermédiaire",
+  "title": "Chronique : le mat de l'Écolier",
+  "estTime": 6,
+  "category": "Chroniques",
+  "xp": 80,
+  "badge": "🎭 Conteur",
+  "summary": "Revivez le plus célèbre des mats rapides et comprenez pourquoi f7 est le point faible du roi.",
+  "steps": [
+    {
+      "title": "1. Frapper f7",
+      "coach": "La dame en h5 et le fou en c4 visent tous deux f7, la case la plus fragile du camp noir. Portez le coup final !",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+      "turn": "w",
+      "solution": [
+        "Qxf7#"
+      ],
+      "hint": "La dame en h5 capture le pion f7, soutenue par le fou c4.",
+      "successMsg": "Mat ! La dame est protégée par le fou : le roi noir ne peut ni capturer, ni fuir."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Le mat de l'Écolier punit un développement négligé. La défense consiste à jouer ...Nf6 tôt, à contrôler f7 et à ne pas laisser dame et fou converger sur la même case."
+    }
+  ]
+},
+{
+  "id": 23,
+  "icon": "🃏",
+  "level": "Débutant",
+  "title": "Chronique : le mat du Fou",
+  "estTime": 4,
+  "category": "Chroniques",
+  "xp": 60,
+  "badge": "🃏 Piège Éclair",
+  "summary": "Deux coups suffisent aux Noirs pour mater un roi imprudent. Une histoire courte et brutale.",
+  "steps": [
+    {
+      "title": "1. La dame traverse l'échiquier",
+      "coach": "Les Blancs ont affaibli leur roi avec f3 et g4. La dame noire peut porter un coup décisif sur la diagonale.",
+      "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+      "turn": "b",
+      "solution": [
+        "Qh4#"
+      ],
+      "hint": "La dame de d8 rejoint h4 en passant par la grande diagonale.",
+      "successMsg": "Mat du Fou ! Le roi blanc est enfermé par ses propres pions."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Ne déplacez jamais les pions f et g sans necessity au début. Chaque pion avancé crée une faiblesse permanente autour du roi."
+    }
+  ]
+},
+{
+  "id": 24,
+  "icon": "🌩️",
+  "level": "Intermédiaire",
+  "title": "Chronique : le piège de Blackburne",
+  "estTime": 7,
+  "category": "Chroniques",
+  "xp": 90,
+  "badge": "🌩️ Piège de Maître",
+  "summary": "Un gambit empoisonné, une dame qui s'aventure, et un cavalier qui surgit en f3.",
+  "steps": [
+    {
+      "title": "1. Le cavalier bondit",
+      "coach": "Les Noirs ont attiré la dame blanche au centre. Le cavalier en d4 peut maintenant frapper f3 : c'est mat !",
+      "fen": "r1b1kbnr/pppp1Npp/8/8/3nq3/8/PPPPBP1P/RNBQKR2 b Qkq - 1 7",
+      "turn": "b",
+      "solution": [
+        "Nf3#"
+      ],
+      "hint": "Le cavalier de d4 saute en f3, couvrant les fuites du roi blanc.",
+      "successMsg": "Mat ! La dame en e4 protège le cavalier et le roi blanc étouffe sous ses propres pièces."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Le gambit Blackburne est un piège classique : 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nd4. Les Blancs ne doivent pas accepter le pion e5 sans prudence."
+    }
+  ]
+},
+{
+  "id": 25,
+  "icon": "🏛️",
+  "level": "Avancé",
+  "title": "Chronique : l'Immortelle d'Anderssen",
+  "estTime": 9,
+  "category": "Chroniques",
+  "xp": 120,
+  "badge": "🏛️ Légende Vivante",
+  "summary": "Londres, 1851. Anderssen sacrifie tout — dame, tours, fous — et conclut par un mat de fou resté mythique.",
+  "steps": [
+    {
+      "title": "1. Le fou conclut",
+      "coach": "Après 22.Qf6+ Nxf6, le fou noir en d6 peut se glisser en e7. C'est le coup final de la partie immortelle.",
+      "fen": "r1bk3r/p2p1pNp/n2B1n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 w - - 0 23",
+      "turn": "w",
+      "solution": [
+        "Be7#"
+      ],
+      "hint": "Le fou de d6 avance en e7, soutenu par le cavalier g7.",
+      "successMsg": "Be7# ! Anderssen offre sa dame puis mate avec un simple fou. L'Immortelle est née."
+    }
+  ],
+  "sections": [
+    {
+      "h": "L'histoire",
+      "p": "Adolf Anderssen affronte Lionel Kieseritzky au café Simpson's de Londres. Son sacrifice de dame au 22e coup reste l'un des plus grands moments de l'histoire des échecs."
+    }
+  ]
+},
+{
+  "id": 26,
+  "icon": "🎯",
+  "level": "Intermédiaire",
+  "title": "Chronique : le mat du couloir",
+  "estTime": 5,
+  "category": "Chroniques",
+  "xp": 70,
+  "badge": "🎯 Gardien du Couloir",
+  "summary": "Un roi privé de fuite, une tour qui arrive sur la dernière rangée : le mat le plus pur du jeu.",
+  "steps": [
+    {
+      "title": "1. Fermer le couloir",
+      "coach": "Les pions noirs forment un mur devant leur roi. La tour blanche peut pénétrer sur la huitième rangée.",
+      "fen": "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Re8#"
+      ],
+      "hint": "La tour de e1 monte en e8.",
+      "successMsg": "Mat du couloir ! Les propres pions noirs empêchent leur roi de s'échapper."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Créez toujours une case de fuite pour votre roi. Une rangée de pions devant le roi est une protection... et une prison."
+    }
+  ]
+},
+{
+  "id": 27,
+  "icon": "💨",
+  "level": "Intermédiaire",
+  "title": "Chronique : le mat étouffé",
+  "estTime": 5,
+  "category": "Chroniques",
+  "xp": 80,
+  "badge": "💨 Cavalier Fantôme",
+  "summary": "Le roi noir est entouré de ses propres pièces. Un cavalier se glisse en f7 pour l'étouffer.",
+  "steps": [
+    {
+      "title": "1. Le saut final",
+      "coach": "Le roi en h8 est bloqué par sa tour et ses pions. Le cavalier en g5 peut sauter en f7.",
+      "fen": "6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Nf7#"
+      ],
+      "hint": "Le cavalier de g5 saute en f7 et donne échec au roi h8.",
+      "successMsg": "Mat étouffé ! Le cavalier attaque le roi que ses propres pièces emprisonnent."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Le mat étouffé est l'arme signature du cavalier. Il apparaît souvent après une dame sacrifiée pour forcer le roi dans un coin."
+    }
+  ]
+},
+{
+  "id": 28,
+  "icon": "🐎",
+  "level": "Intermédiaire",
+  "title": "Chronique : le mat arabe",
+  "estTime": 5,
+  "category": "Chroniques",
+  "xp": 80,
+  "badge": "🐎 Cavalier du Désert",
+  "summary": "Tour et cavalier unissent leurs forces pour enfermer le roi dans le coin.",
+  "steps": [
+    {
+      "title": "1. La tour monte",
+      "coach": "Le cavalier en f6 interdit les cases h7 et g8. La tour peut monter en g8 pour mater.",
+      "fen": "7k/6R1/5N2/8/8/8/8/6K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Rg8#"
+      ],
+      "hint": "La tour de g7 avance d'une case en g8.",
+      "successMsg": "Mat arabe ! La tour contrôle la rangée pendant que le cavalier couvre les fuites."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Tour + cavalier est un duo redoutable près du roi. Le cavalier ferme les cases, la tour délivre le mat."
+    }
+  ]
+},
+{
+  "id": 29,
+  "icon": "🪜",
+  "level": "Débutant",
+  "title": "Chronique : l'échelle des tours",
+  "estTime": 5,
+  "category": "Chroniques",
+  "xp": 65,
+  "badge": "🪜 Escalier Royal",
+  "summary": "Deux tours montent ensemble, rangée après rangée, jusqu'au mat.",
+  "steps": [
+    {
+      "title": "1. La dernière marche",
+      "coach": "La tour en b7 coupe la septième rangée. L'autre tour peut monter en a8 pour mater.",
+      "fen": "7k/1R6/8/8/8/8/8/R5K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Ra8#"
+      ],
+      "hint": "La tour de a1 monte en a8.",
+      "successMsg": "Mat en échelle ! Les deux tours se relaient pour refouler le roi."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Le mat en échelle est la technique de base avec deux tours. Une tour coupe, l'autre donne échec, puis on recommence."
+    }
+  ]
+},
+{
+  "id": 30,
+  "icon": "👑",
+  "level": "Débutant",
+  "title": "Chronique : la dame et le roi",
+  "estTime": 4,
+  "category": "Chroniques",
+  "xp": 55,
+  "badge": "👑 Duo Suprême",
+  "summary": "La finale la plus simple : le roi protège la dame, la dame enferme le roi adverse.",
+  "steps": [
+    {
+      "title": "1. Le dernier carré",
+      "coach": "Le roi blanc en f7 protège la case g7. La dame peut s'y installer pour mater.",
+      "fen": "7k/5K2/6Q1/8/8/8/8/8 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Qg7#"
+      ],
+      "hint": "La dame de g6 avance en g7, protégée par le roi f7.",
+      "successMsg": "Mat ! La dame ne peut pas être capturée car le roi blanc la défend."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Pour mater avec dame et roi, utilisez le roi pour protéger la dame et réduire l'espace. Ne donnez pas d'échecs inutiles."
+    }
+  ]
+},
+{
+  "id": 31,
+  "icon": "🕯️",
+  "level": "Avancé",
+  "title": "Chronique : le mat d'Anastasia",
+  "estTime": 6,
+  "category": "Chroniques",
+  "xp": 95,
+  "badge": "🕯️ Dame de la Nuit",
+  "summary": "Un cavalier en e7, une tour qui arrive sur la colonne h : le roi n'a plus aucune case.",
+  "steps": [
+    {
+      "title": "1. La tour entre dans l'histoire",
+      "coach": "Le cavalier en e7 surveille g8 et g6. La tour peut monter en h1 pour mater sur la colonne h.",
+      "fen": "8/4N1pk/8/8/8/8/6K1/R7 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Rh1#"
+      ],
+      "hint": "La tour de a1 rejoint la colonne h en h1.",
+      "successMsg": "Mat d'Anastasia ! La tour attaque sur la colonne, le cavalier ferme les issues."
+    }
+  ],
+  "sections": [
+    {
+      "h": "L'histoire",
+      "p": "Ce mat doit son nom à une nouvelle de Wilhelm Heinse, « Anastasia et le jeu d'échecs ». Il illustre la coordination parfaite entre tour et cavalier."
+    }
+  ]
+},
+{
+  "id": 32,
+  "icon": "⚡",
+  "level": "Intermédiaire",
+  "title": "Chronique : la batterie dame-fou",
+  "estTime": 6,
+  "category": "Chroniques",
+  "xp": 85,
+  "badge": "⚡ Batterie Lourde",
+  "summary": "Un fou en d4 soutient la dame en g7. Le roi noir ne peut ni capturer ni fuir.",
+  "steps": [
+    {
+      "title": "1. Poser la dame",
+      "coach": "Le fou en d4 contrôle la diagonale jusqu'à g7. La dame peut s'y poser en toute sécurité.",
+      "fen": "7k/8/5Q2/8/3B4/8/8/6K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Qg7#"
+      ],
+      "hint": "La dame de f6 avance en g7, protégée par le fou d4.",
+      "successMsg": "Mat ! La batterie dame-fou est une arme classique contre un roi mal défendu."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Une batterie aligne deux pièces sur une même diagonale. La pièce arrière protège la pièce avant, qui peut sacrifier ou mater."
+    }
+  ]
+},
+{
+  "id": 33,
+  "icon": "🛡️",
+  "level": "Intermédiaire",
+  "title": "Chronique : la dame en d8",
+  "estTime": 5,
+  "category": "Chroniques",
+  "xp": 75,
+  "badge": "🛡️ Briseur de Rempart",
+  "summary": "La dame profite de la dernière rangée pour mater un roi enfermé derrière ses pions.",
+  "steps": [
+    {
+      "title": "1. Entrer en d8",
+      "coach": "Les pions noirs bloquent les fuites. La dame blanche peut pénétrer en d8 et mater.",
+      "fen": "6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1",
+      "turn": "w",
+      "solution": [
+        "Qd8#"
+      ],
+      "hint": "La dame de d1 monte en d8.",
+      "successMsg": "Mat ! La dame contrôle la huitième rangée et les pions noirs font le reste."
+    }
+  ],
+  "sections": [
+    {
+      "h": "La leçon",
+      "p": "Une dame qui atteint la dernière rangée est souvent décisive. Surveillez les cases de fuite de votre roi avant de pousser les pions."
+    }
+  ]
+}
 ];
 
   window.ChessLessons = window.LESSONS = LESSONS;

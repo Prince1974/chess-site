@@ -430,7 +430,10 @@
         { id: 'streak_7', icon: '🔥', name: 'Semaine parfaite', desc: '7 jours consécutifs', test: () => (streak.count || 0) >= 7 },
         { id: 'elo_1500', icon: '📈', name: 'En progression', desc: 'Atteindre 1500 Elo rapide', test: () => (elo.rapid || 0) >= 1500 },
         { id: 'xp_1000', icon: '⭐', name: 'Vétéran', desc: 'Accumuler 1000 XP', test: () => xp >= 1000 },
-        { id: 'xp_5000', icon: '💎', name: 'Légende', desc: 'Accumuler 5000 XP', test: () => xp >= 5000 }
+        { id: 'xp_5000', icon: '💎', name: 'Légende', desc: 'Accumuler 5000 XP', test: () => xp >= 5000 },
+        { id: 'community_1', icon: '🌍', name: 'Citoyen du club', desc: 'Visiter la communauté', test: () => !!this.get('communityVisited', false) },
+        { id: 'friend_1', icon: '🤝', name: 'Premier ami', desc: 'Ajouter un ami', test: () => (this.get('friendCount', 0) || 0) >= 1 },
+        { id: 'chat_1', icon: '💬', name: 'Voix du club', desc: 'Envoyer un message', test: () => !!this.get('chatUsed', false) }
       ];
 
       return defs.map(a => ({

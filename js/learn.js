@@ -48,6 +48,27 @@
       `;
       c.appendChild(hero);
 
+      const stories = this.lessons.filter(l => l.category === 'Chroniques');
+      if (stories.length) {
+        const rail = document.createElement('div');
+        rail.className = 'story-rail mb-25';
+        rail.innerHTML = `
+          <div class="story-rail-head">
+            <div><span class="story-kicker">CHRONIQUES DE L'ÉCHIQUIER</span><h2>Des histoires qui se jouent</h2></div>
+            <span class="text-muted" style="font-size:12px">${stories.length} récits légendaires · accès libre</span>
+          </div>
+          <div class="story-track" id="storyTrack"></div>`;
+        c.appendChild(rail);
+        const track = rail.querySelector('#storyTrack');
+        stories.forEach(l => {
+          const card = document.createElement('button');
+          card.className = 'story-card';
+          card.innerHTML = `<span class="story-icon">${l.icon}</span><b>${l.title}</b><small>${l.summary}</small><span class="story-cta">Lire l'histoire →</span>`;
+          card.addEventListener('click', () => this._startInteractiveLesson(l));
+          track.appendChild(card);
+        });
+      }
+
       // Grouper par niveau
       const levels = ['Débutant', 'Intermédiaire', 'Avancé'];
       levels.forEach(lvl => {
@@ -75,12 +96,13 @@
           let isUnlocked = isGod || idx === 0 || (doneMap[lvlLessons[idx - 1].id] && doneMap[lvlLessons[idx - 1].id].done) || isDone;
           
           // Vérification Pro pour niveaux supérieurs
-          const isProRequired = (lvl === 'Intermédiaire' || lvl === 'Avancé');
+          const isProRequired = (lvl === 'Intermédiaire' || lvl === 'Avancé') && l.category !== 'Chroniques';
           const hasPro = Storage.isPro();
           
           if (isProRequired && !hasPro) {
             isUnlocked = false;
           }
+          if (l.category === 'Chroniques') isUnlocked = true;
 
           const card = document.createElement('div');
           card.className = `lesson-card-interactive card ${isDone ? 'completed' : ''} ${!isUnlocked ? 'locked' : ''}`;
