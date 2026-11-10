@@ -11,18 +11,18 @@
     currentRoute: 'home',
     game: null,
 
-init() {
-  Storage.applyTheme();
-  this._bindNav();
-  this._initRoot();
+    init() {
+      Storage.applyTheme();
+      this._bindNav();
+      this._initRoot();
 
-  // Écouter le changement d'URL (Back/Forward)
-  window.addEventListener('popstate', () => this._onPathChange());
+      // Écouter le changement d'URL (Back/Forward)
+      window.addEventListener('popstate', () => this._onPathChange());
 
-  const route = window.location.pathname.replace(/^\/|\/$/g, '') || 'home';
-  this.navigate(route, true); // true = replaceState pour l'entrée initiale
+      const route = window.location.pathname.replace(/^\/|\/$/g, '') || 'home';
+      this.navigate(route, true); // true = replaceState pour l'entrée initiale
 
-  this._updateUserChip();
+      this._updateUserChip();
       // Boucle d'horloge
       setInterval(() => {
         if (this.game) this.game.updateClockDisplay();
@@ -395,52 +395,160 @@ init() {
       const streak = Storage.getStreak();
       const quests = Storage.getDailyQuests();
 
-      // Hero
+      const lessons = window.LESSONS || [];
+      const doneMap = Storage.getLessons();
+      const doneLessons = lessons.filter(l => doneMap[l.id] && doneMap[l.id].done);
+      const nextLesson = lessons.find(l => !(doneMap[l.id] && doneMap[l.id].done)) || lessons[0];
+      const lessonPct = lessons.length ? Math.round((doneLessons.length / lessons.length) * 100) : 0;
+
+      const puzzles = window.PUZZLES || [];
+      const daySeed = Math.floor(Date.now() / 86400000);
+      const daily = puzzles.length ? puzzles[daySeed % puzzles.length] : null;
+      const dailyDone = daily ? !!(Storage.getPuzzleProgress()[daily.id] || {}).solved : false;
+
+      const quotes = window.CHESS_QUOTES || [];
+      const quote = quotes.length ? quotes[daySeed % quotes.length] : { text: 'Chaque partie est une nouvelle occasion de progresser.', author: 'Masterchessis' };
+
+      const achievements = Storage.getAchievements();
+      const unlockedAch = achievements.filter(a => a.unlocked).length;
+      const shownAch = achievements.slice().sort((a, b) => b.unlocked - a.unlocked).slice(0, 6);
+
+      // --- Hero ---
       const hero = document.createElement('div');
       hero.className = 'hero';
       hero.innerHTML = `
-        <div class="flex justify-between items-center flex-wrap gap-10 mb-15">
-          <div class="user-level-banner flex items-center gap-10">
-            <span class="user-level-badge">${lvl.icon} Niv. ${lvl.level}</span>
-            <div>
-              <div class="font-bold text-accent">${lvl.title}</div>
-              <div class="text-muted" style="font-size:11px">${lvl.currentXp} XP · ${lvl.xpInLevel}/${lvl.xpNeeded} XP (${lvl.progressPct}%)</div>
-            </div>
-          </div>
-          <div class="streak-pill">
-            <span>🔥</span>
-            <span>Série : <b>${streak.count} jour${streak.count > 1 ? 's' : ''}</b></span>
-          </div>
-        </div>
-
-        <div class="xp-bar-container mb-20" style="background:rgba(255,255,255,0.08);border-radius:10px;height:8px;overflow:hidden">
-          <div class="xp-bar-fill" style="width:${lvl.progressPct}%;background:linear-gradient(90deg, var(--accent), var(--gold));height:100%;border-radius:10px;transition:width 0.5s"></div>
-        </div>
-
-        <h1>Jouez, apprenez, <span class="text-accent">progressez</span></h1>
-        <p>Masterchessis : académie d'échecs interactive, entraîneur de puzzles, multijoueur et matchs contre l'IA.</p>
-        <div class="hero-btns mt-20">
+        <span class="hero-badge"><span class="dot"></span> Niveau ${lvl.level} · ${lvl.title}</span>
+        <h1>Jouez, apprenez,<br><span class="text-accent">progressez</span></h1>
+        <p>L'académie d'échecs interactive : affrontez l'IA ou vos amis, résolvez des puzzles et progressez avec un coach virtuel.</p>
+        <div class="hero-btns">
           <button class="btn btn-cta" data-go="play">♟ Jouer maintenant</button>
-          <button class="btn btn-blue" data-go="puzzles">🧩 Puzzles Tactiques</button>
-          <button class="btn" data-go="learn">📚 Cours Interactifs</button>
+          <button class="btn btn-blue" data-go="puzzles">🧩 Puzzles tactiques</button>
+          <button class="btn" data-go="learn">📚 Continuer l'apprentissage</button>
+        </div>
+        <div class="hero-trust">
+          <span>🔥 Série <b>${streak.count} jour${streak.count > 1 ? 's' : ''}</b></span>
+          <span class="sep"></span>
+          <span>⭐ <b>${lvl.currentXp}</b> XP</span>
+          <span class="sep"></span>
+          <span>🧩 <b>${puzzles.length}</b> puzzles</span>
+          <span class="sep"></span>
+          <span>📚 <b>${lessons.length}</b> leçons</span>
+        </div>
+        <div style="max-width:420px;margin:24px auto 0">
+          <div class="flex justify-between" style="font-size:12px;color:var(--text-secondary)">
+            <span>Progression du niveau</span>
+            <span><b>${lvl.xpInLevel}/${lvl.xpNeeded} XP</b></span>
+          </div>
+          <div class="progress-track mt-5"><div class="progress-fill" style="width:${lvl.progressPct}%"></div></div>
         </div>
       `;
       sec.appendChild(hero);
 
-      // Quêtes Quotidiennes
+      // --- Puzzle du jour + citation ---
+      const dailySection = document.createElement('div');
+      dailySection.className = 'home-section';
+      dailySection.innerHTML = `
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Votre rituel quotidien</div>
+            <h2 class="section-title"><span class="ico">🌅</span> Aujourd'hui sur Masterchessis</h2>
+          </div>
+        </div>
+        <div class="home-split">
+          <div class="card daily-puzzle" style="padding:18px">
+            ${daily ? `
+              <div class="daily-top">
+                <div>
+                  <div class="eyebrow">Entraînement du jour</div>
+                  <h3 class="section-title" style="font-size:18px;margin-top:4px"><span class="ico">🧩</span> Puzzle du jour</h3>
+                </div>
+                <span class="badge ${dailyDone ? 'badge-green' : 'badge-gold'}">${dailyDone ? '✔ Résolu' : 'Elo ' + daily.rating}</span>
+              </div>
+              <div class="daily-board" id="dailyBoard"></div>
+              <div class="daily-meta">
+                <span class="badge badge-blue">${daily.theme}</span>
+                <span class="badge">${daily.solution.length} coup${daily.solution.length > 1 ? 's' : ''}</span>
+                ${dailyDone ? '<span class="badge badge-green">Déjà maîtrisé</span>' : ''}
+              </div>
+              <p class="daily-info">${daily.desc || ''}</p>
+              <div class="daily-actions">
+                <button class="btn btn-primary" id="btnDaily">${dailyDone ? 'Rejouer le puzzle' : 'Résoudre le puzzle'} →</button>
+                <button class="btn" data-go="puzzles">Tous les puzzles</button>
+              </div>
+            ` : '<p class="daily-info">Aucun puzzle disponible pour le moment.</p>'}
+          </div>
+          <div class="card quote-card" style="padding:26px">
+            <div class="eyebrow">Citation du jour</div>
+            <div class="quote-mark">“</div>
+            <div class="quote-text">${quote.text}</div>
+            <div class="quote-author">${quote.author}</div>
+          </div>
+        </div>
+      `;
+      sec.appendChild(dailySection);
+
+      // --- Reprendre l'apprentissage + succès ---
+      const progressSection = document.createElement('div');
+      progressSection.className = 'home-section';
+      progressSection.innerHTML = `
+        <div class="home-split">
+          <div class="card continue-card" style="padding:18px">
+            <div class="eyebrow">Reprendre là où vous vous êtes arrêté</div>
+            <div class="continue-top">
+              <div class="continue-ico">${nextLesson ? nextLesson.icon : '📚'}</div>
+              <div class="continue-meta">
+                <h3>${nextLesson ? nextLesson.title : 'Académie Masterchessis'}</h3>
+                <p>${nextLesson ? `${nextLesson.level} · ${nextLesson.estTime} min · ${nextLesson.category}` : 'Commencez votre parcours'}</p>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between" style="font-size:12px;color:var(--text-secondary)">
+                <span>Progression de l'académie</span>
+                <b>${doneLessons.length}/${lessons.length}</b>
+              </div>
+              <div class="progress-track mt-5"><div class="progress-fill" style="width:${lessonPct}%"></div></div>
+            </div>
+            <button class="btn btn-primary" data-go="learn">${doneLessons.length ? 'Continuer la leçon' : 'Commencer les cours'} →</button>
+          </div>
+          <div class="card" style="padding:18px">
+            <div class="flex justify-between items-center">
+              <div>
+                <div class="eyebrow">Succès</div>
+                <h3 style="margin-top:4px">${unlockedAch}/${achievements.length} débloqués</h3>
+              </div>
+              <button class="btn btn-sm" data-go="profile">Voir tout</button>
+            </div>
+            <div class="achievements-grid mt-15">
+              ${shownAch.map(a => `
+                <div class="achievement ${a.unlocked ? 'unlocked' : 'locked'}">
+                  <div class="ach-ico">${a.unlocked ? a.icon : '🔒'}</div>
+                  <div class="ach-info">
+                    <div class="ach-name">${a.name}</div>
+                    <div class="ach-desc">${a.desc}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      sec.appendChild(progressSection);
+
+      // --- Quêtes du jour ---
       const questCard = document.createElement('div');
-      questCard.className = 'card mb-25';
+      questCard.className = 'card home-section';
+      questCard.style.padding = '18px';
       questCard.innerHTML = `
         <div class="flex justify-between items-center mb-15">
-          <h3 class="flex items-center gap-8">
-            <span>🎯</span>
-            <span>Quêtes du Jour</span>
-          </h3>
+          <div>
+            <div class="eyebrow">Objectifs quotidiens</div>
+            <h3 class="flex items-center gap-8" style="margin-top:4px"><span>🎯</span> Quêtes du jour</h3>
+          </div>
           <span class="badge badge-gold">Récompenses XP</span>
         </div>
         <div class="grid grid-3 gap-10">
           ${quests.map(q => `
-            <div class="stat-card ${q.done ? 'border-accent' : ''}" style="padding:10px;text-align:left;border:1px solid ${q.done ? 'var(--accent)' : 'rgba(255,255,255,0.05)'}">
+            <div class="stat-card" style="padding:12px;text-align:left;border:1px solid ${q.done ? 'var(--accent)' : 'var(--border-soft)'}">
               <div class="flex justify-between items-center mb-5">
                 <span style="font-size:18px">${q.icon}</span>
                 <span class="badge ${q.done ? 'badge-green' : 'badge-gold'}" style="font-size:10px">${q.done ? '✔ + ' + q.xp + ' XP' : '+' + q.xp + ' XP'}</span>
@@ -450,21 +558,77 @@ init() {
                 <span>Progression :</span>
                 <b>${q.current}/${q.target}</b>
               </div>
+              <div class="progress-track mt-5" style="height:5px"><div class="progress-fill" style="width:${Math.round(q.current / q.target * 100)}%"></div></div>
             </div>
           `).join('')}
         </div>
       `;
       sec.appendChild(questCard);
 
+      // --- Chiffres clés ---
+      const strip = document.createElement('div');
+      strip.className = 'home-section stats-strip';
+      strip.innerHTML = `
+        <div class="stat-tile"><div class="st-ico">📈</div><div class="st-value">${elo.rapid}</div><div class="st-label">Elo rapide</div></div>
+        <div class="stat-tile"><div class="st-ico">♟️</div><div class="st-value">${stats.games}</div><div class="st-label">Parties jouées</div></div>
+        <div class="stat-tile"><div class="st-ico">🧩</div><div class="st-value">${stats.puzzlesSolved || 0}</div><div class="st-label">Puzzles réussis</div></div>
+        <div class="stat-tile"><div class="st-ico">🔥</div><div class="st-value">${streak.count}</div><div class="st-label">Jours de série</div></div>
+      `;
+      sec.appendChild(strip);
+
+      // --- Entraînement par thème ---
+      const themeCounts = {};
+      puzzles.forEach(p => { if (p.theme) themeCounts[p.theme] = (themeCounts[p.theme] || 0) + 1; });
+      const topThemes = Object.entries(themeCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      if (topThemes.length) {
+        const themeIco = (t) => /mat/i.test(t) ? '👑' : /fourchette/i.test(t) ? '🍴' : /clouage/i.test(t) ? '📌' : /enfilade/i.test(t) ? '🎯' : /sacrifice/i.test(t) ? '🔥' : /attaque/i.test(t) ? '⚔️' : /finale/i.test(t) ? '♟️' : '🧩';
+        const themeSection = document.createElement('div');
+        themeSection.className = 'home-section';
+        themeSection.innerHTML = `
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Entraînement ciblé</div>
+              <h2 class="section-title"><span class="ico">🎯</span> Un thème, une faiblesse, une victoire</h2>
+              <div class="section-sub">Choisissez un thème tactique et enchaînez les exercices adaptés à votre niveau.</div>
+            </div>
+            <button class="btn btn-sm" data-go="puzzles">Tous les thèmes</button>
+          </div>
+          <div class="theme-showcase">
+            ${topThemes.map(([t, c]) => `
+              <button class="theme-tile" data-theme="${t}">
+                <span class="theme-tile-ico">${themeIco(t)}</span>
+                <span class="theme-tile-name">${t}</span>
+                <span class="theme-tile-count">${c} puzzle${c > 1 ? 's' : ''}</span>
+                <span class="theme-tile-go">S'entraîner →</span>
+              </button>
+            `).join('')}
+          </div>
+        `;
+        sec.appendChild(themeSection);
+      }
+
+      // --- Fonctionnalités ---
       const features = document.createElement('div');
-      features.className = 'features';
+      features.className = 'home-section';
+      features.innerHTML = `
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Tout au même endroit</div>
+            <h2 class="section-title"><span class="ico">✨</span> Votre salle d'entraînement</h2>
+            <div class="section-sub">Six outils pour progresser, du premier coup à la première victoire.</div>
+          </div>
+        </div>
+        <div class="features"></div>
+      `;
+      sec.appendChild(features);
+      const featuresGrid = features.querySelector('.features');
       const items = [
-        { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez l'IA Stockfish 10 à 10 niveaux de difficulté progressifs.", route: 'play' },
-        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (Socket.io).', route: 'play', online: true },
-        { icon: '🧩', title: 'Puzzles & Rush', desc: 'Entraînez-vous avec 27+ exercices tactiques et le mode Puzzle Rush 3 min.', route: 'puzzles' },
-        { icon: '📚', title: 'Académie Interactive', desc: 'Cours interactifs pas-à-pas avec coach virtuel comme Chess.com.', route: 'learn' },
-        { icon: '♟', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs idées stratégiques.', route: 'openings' },
-        { icon: '📊', title: 'Mon Profil', desc: 'Consultez votre classement, votre historique et personnalisez votre avatar.', route: 'profile' }
+        { icon: '⚔️', title: "Contre l'IA", desc: "Affrontez un moteur à 10 niveaux de difficulté progressifs.", route: 'play' },
+        { icon: '🌐', title: 'Multijoueur réel', desc: 'Défiez vos amis via un code de partie (WebRTC / Socket.io).', route: 'play', online: true },
+        { icon: '🧩', title: 'Puzzles & Rush', desc: `${puzzles.length} exercices tactiques classés et le mode Puzzle Rush 3 min.`, route: 'puzzles' },
+        { icon: '📚', title: 'Académie interactive', desc: 'Cours guidés pas-à-pas avec un coach virtuel.', route: 'learn' },
+        { icon: '📖', title: 'Ouvertures', desc: 'Explorez les grandes ouvertures et leurs plans stratégiques.', route: 'openings' },
+        { icon: '🔬', title: 'Analyse', desc: 'Analysez vos parties coup par coup avec évaluation en temps réel.', route: 'analyze' }
       ];
       items.forEach(it => {
         const card = document.createElement('div');
@@ -473,34 +637,52 @@ init() {
         card.addEventListener('click', () => {
           if (it.online) {
             this.navigate('play');
-            setTimeout(() => this.showOnlinePanel(), 100);
+            setTimeout(() => this.showOnlinePanel(), 120);
           } else {
             this.navigate(it.route);
           }
         });
-        features.appendChild(card);
+        featuresGrid.appendChild(card);
       });
-      sec.appendChild(features);
 
-      // Mini stats strip
-      const strip = document.createElement('div');
-      strip.className = 'grid grid-4 mt-30';
-      strip.innerHTML = `
-        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--accent)">${elo.rapid}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Elo Rapide</div></div>
-        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--accent-2)">${stats.games}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Parties</div></div>
-        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--gold)">${stats.puzzlesSolved}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Puzzles réussis</div></div>
-        <div class="card center"><div class="stat-value" style="font-size:26px;font-weight:800;color:var(--purple)">${Object.values(Storage.getLessons()).filter(l => l && l.done).length}/${Object.keys(window.LESSONS || {}).length}</div><div class="stat-label text-muted" style="text-transform:uppercase;font-size:11px">Leçons</div></div>
-      `;
-      sec.appendChild(strip);
+      // Aperçu du plateau du puzzle du jour
+      if (daily) {
+        const host = sec.querySelector('#dailyBoard');
+        if (host) {
+          try {
+            const preview = new Chess(daily.fen);
+            new ChessBoard({
+              container: host,
+              chess: preview,
+              interactive: false,
+              orientation: preview.turn()
+            });
+          } catch (e) { /* aperçu non bloquant */ }
+        }
+      }
 
+      // Navigation
       sec.querySelectorAll('[data-go]').forEach(b => {
-        b.addEventListener('click', () => {
-          if (b.dataset.go === 'online') {
-            this.navigate('play');
-            setTimeout(() => this.showOnlinePanel(), 100);
-          } else {
-            this.navigate(b.dataset.go);
-          }
+        b.addEventListener('click', () => this.navigate(b.dataset.go));
+      });
+
+      const btnDaily = sec.querySelector('#btnDaily');
+      if (btnDaily && daily) {
+        btnDaily.addEventListener('click', () => {
+          this.navigate('puzzles');
+          setTimeout(() => {
+            if (window.Puzzles) Puzzles.startWithPuzzle(daily.id);
+          }, 180);
+        });
+      }
+
+      sec.querySelectorAll('.theme-tile').forEach(tile => {
+        tile.addEventListener('click', () => {
+          const theme = tile.dataset.theme;
+          this.navigate('puzzles');
+          setTimeout(() => {
+            if (window.Puzzles) Puzzles.startWithTheme(theme);
+          }, 180);
         });
       });
     },
@@ -509,29 +691,52 @@ init() {
     renderPlay(sec) {
       sec.innerHTML = '';
       this.currentGameCfg = null;
+      const stats = Storage.getStats();
+      const elo = Storage.getElo();
+      const streak = Storage.getStreak();
 
-      // Configuration
-      const card = document.createElement('div');
-      card.className = 'card settings-card mt-20';
-      card.innerHTML = `
-        <h2 class="mb-20">⚔️ Nouvelle partie</h2>
-
-        <div class="tab-bar" id="modeTabs">
-          <button class="tab-btn" data-mode="ai">🤖 vs IA</button>
-          <button class="tab-btn" data-mode="hot">👥 Local (2 joueurs)</button>
-          <button class="tab-btn" data-mode="online">🌐 En ligne</button>
+      const arena = document.createElement('div');
+      arena.className = 'arena';
+      arena.innerHTML = `
+        <div class="arena-head">
+          <div>
+            <div class="eyebrow">L'Arène Masterchessis</div>
+            <h1 class="arena-title">Choisissez votre <span>combat</span></h1>
+            <p class="arena-sub">Un moteur, un ami, ou le monde : chaque partie est un terrain d'entraînement.</p>
+          </div>
+          <div class="arena-record">
+            <div class="record-tile"><span>Elo rapide</span><b>${elo.rapid}</b></div>
+            <div class="record-tile"><span>Parties</span><b>${stats.games}</b></div>
+            <div class="record-tile"><span>Série</span><b>🔥 ${streak.count}</b></div>
+          </div>
         </div>
 
-        <div id="modeContent"></div>
+        <div class="card arena-shell">
+          <div class="arena-modes" id="modeTabs">
+            <button class="mode-card active" data-mode="ai">
+              <span class="mode-ico">🤖</span>
+              <span class="mode-txt"><b>Contre l'IA</b><small>10 niveaux progressifs</small></span>
+            </button>
+            <button class="mode-card" data-mode="hot">
+              <span class="mode-ico">👥</span>
+              <span class="mode-txt"><b>Local ×2</b><small>À deux sur un écran</small></span>
+            </button>
+            <button class="mode-card" data-mode="online">
+              <span class="mode-ico">🌐</span>
+              <span class="mode-txt"><b>En ligne</b><small>Code de partie</small></span>
+            </button>
+          </div>
+          <div class="arena-body" id="modeContent"></div>
+        </div>
       `;
-      sec.appendChild(card);
+      sec.appendChild(arena);
 
-      this.playCard = card;
+      this.playCard = arena;
       this._renderAISetup();
 
-      card.querySelectorAll('.tab-btn').forEach(btn => {
+      arena.querySelectorAll('.mode-card').forEach(btn => {
         btn.addEventListener('click', () => {
-          card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          arena.querySelectorAll('.mode-card').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           const mode = btn.dataset.mode;
           if (mode === 'ai') this._renderAISetup();
@@ -670,108 +875,119 @@ init() {
     _renderAISetup() {
       const host = document.getElementById('modeContent');
       if (!host) return;
-
-      const BOTS = [
-        { id: 'martin', name: 'Martin', avatar: '👶', elo: 250, level: 1, desc: 'Débutant absolu' },
-        { id: 'jimmy', name: 'Jimmy', avatar: '🧢', elo: 600, level: 2, desc: 'Joueur junior' },
-        { id: 'elena', name: 'Elena', avatar: '👓', elo: 1200, level: 5, desc: 'Amateur tactique' },
-        { id: 'nelson', name: 'Nelson', avatar: '⚡', elo: 1500, level: 7, desc: 'Attaque Dame agressive' },
-        { id: 'master', name: 'Maître Bot', avatar: '🧙‍♂️', elo: 2000, level: 9, desc: 'Jeu positionnel' },
-        { id: 'magnus', name: 'Stockfish GM', avatar: '👑', elo: 2850, level: 10, desc: 'Moteur imbattable' }
+      const cadences = [
+        { time: 10, inc: 0, label: '10 min', desc: 'Rapide', icon: '🕐' },
+        { time: 5, inc: 0, label: '5 min', desc: 'Blitz', icon: '⏱️' },
+        { time: 3, inc: 0, label: '3 min', desc: 'Blitz', icon: '⚡' },
+        { time: 3, inc: 2, label: '3+2', desc: 'Blitz', icon: '🔥' },
+        { time: 15, inc: 10, label: '15+10', desc: 'Classique', icon: '🏛️' },
+        { time: 1, inc: 0, label: '1 min', desc: 'Bullet', icon: '💨' },
+        { time: 1, inc: 1, label: '1+1', desc: 'Bullet', icon: '🚀' }
       ];
-
       host.innerHTML = `
-        <div class="form-group mb-20">
-          <label class="mb-10 block font-bold">🤖 Choisir un Bot Adversaire (Style Chess.com)</label>
-          <div class="grid grid-3 gap-10" id="botGrid">
-            ${BOTS.map((b, idx) => `
-              <div class="stat-card bot-card ${idx === 2 ? 'selected border-accent' : ''}" data-bot-id="${b.id}" style="cursor:pointer;padding:10px;text-align:center;transition:all 0.2s">
-                <div style="font-size:28px">${b.avatar}</div>
-                <div class="font-bold mt-5" style="font-size:13px">${b.name}</div>
-                <div class="text-accent font-bold" style="font-size:11px">${b.elo} Elo</div>
-                <div class="text-muted" style="font-size:10px">${b.desc}</div>
-              </div>
-            `).join('')}
+        <div class="arena-config">
+          <div class="arena-field">
+            <div class="field-head">
+              <span class="field-index">01</span>
+              <h3>Niveau de difficulté</h3>
+              <span class="field-value" id="levelValue">5 · Amateur+</span>
+            </div>
+            <div class="level-ladder">
+              ${[1,2,3,4,5,6,7,8,9,10].map(l => `
+                <button class="level-step ${l === 5 ? 'selected' : ''}" data-level="${l}">
+                  <b>${l}</b><small>${this._shortLevelLabel(l)}</small>
+                </button>
+              `).join('')}
+            </div>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label>Niveau de difficulté précis (1 à 10)</label>
-          <div class="time-select">
-            ${[1,2,3,4,5,6,7,8,9,10].map(l =>
-              `<div class="time-option ${l === 5 ? 'selected' : ''}" data-level="${l}"><div class="t-label">${l}</div><div class="t-desc">${this._levelLabel(l)}</div></div>`
-            ).join('')}
+          <div class="arena-field">
+            <div class="field-head">
+              <span class="field-index">02</span>
+              <h3>Cadence</h3>
+              <span class="field-value" id="cadenceValue">10 min</span>
+            </div>
+            <div class="cadence-grid">
+              ${cadences.map((c, i) => `
+                <button class="cadence-card ${i === 0 ? 'selected' : ''}" data-time="${c.time}" data-inc="${c.inc}">
+                  <span class="cad-ico">${c.icon}</span>
+                  <b>${c.label}</b>
+                  <small>${c.desc}</small>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="arena-field">
+            <div class="field-head">
+              <span class="field-index">03</span>
+              <h3>Votre camp</h3>
+              <span class="field-value" id="colorValue">Blancs</span>
+            </div>
+            <div class="side-grid">
+              <button class="side-card selected" data-color="w">
+                <span class="side-piece">♔</span>
+                <span><b>Blancs</b><small>Le premier coup</small></span>
+              </button>
+              <button class="side-card" data-color="b">
+                <span class="side-piece">♚</span>
+                <span><b>Noirs</b><small>La réponse</small></span>
+              </button>
+              <button class="side-card" data-color="r">
+                <span class="side-piece">🎲</span>
+                <span><b>Hasard</b><small>Surprise</small></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="arena-launch">
+            <div class="launch-summary">Configuration : <b id="launchText">Niveau 5 · 10 min · Blancs</b></div>
+            <button class="btn btn-cta btn-lg" id="startAI">Entrer dans l'arène →</button>
           </div>
         </div>
-        <div class="form-group">
-          <label>Temps / incrément</label>
-          <div class="time-select">
-            <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc">Rapide</div></div>
-            <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc">Blitz</div></div>
-            <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc">Classique</div></div>
-            <div class="time-option" data-time="1" data-inc="1"><div class="t-label">1+1</div><div class="t-desc">Bullet</div></div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Couleur</label>
-          <div class="radio-pill-row">
-            <button class="radio-pill selected" data-color="w">♔ Blancs</button>
-            <button class="radio-pill" data-color="b">♚ Noirs</button>
-            <button class="radio-pill" data-color="r">🎲 Aléatoire</button>
-          </div>
-        </div>
-        <button class="btn btn-cta btn-lg btn-block mt-20" id="startAI">♟ Commencer la partie</button>
       `;
 
-      let selectedBot = BOTS[2];
       let selLevel = 5, selTime = 10, selInc = 0, selColor = 'w';
+      const refresh = () => {
+        const cad = cadences.find(c => c.time === selTime && c.inc === selInc) || cadences[0];
+        const colorText = selColor === 'w' ? 'Blancs' : selColor === 'b' ? 'Noirs' : 'Hasard';
+        host.querySelector('#levelValue').textContent = `${selLevel} · ${this._levelLabel(selLevel)}`;
+        host.querySelector('#cadenceValue').textContent = cad.label;
+        host.querySelector('#colorValue').textContent = colorText;
+        host.querySelector('#launchText').textContent = `Niveau ${selLevel} · ${cad.label} · ${colorText}`;
+      };
 
-      host.querySelectorAll('.bot-card').forEach(el => {
+      host.querySelectorAll('.level-step').forEach(el => {
         el.addEventListener('click', () => {
-          host.querySelectorAll('.bot-card').forEach(x => {
-            x.classList.remove('selected', 'border-accent');
-          });
-          el.classList.add('selected', 'border-accent');
-          const botId = el.dataset.botId;
-          selectedBot = BOTS.find(b => b.id === botId) || BOTS[2];
-          selLevel = selectedBot.level;
-
-          // Mettre à jour le sélecteur de niveau
-          host.querySelectorAll('.time-option[data-level]').forEach(x => {
-            x.classList.toggle('selected', parseInt(x.dataset.level, 10) === selLevel);
-          });
-        });
-      });
-
-      host.querySelectorAll('.time-option[data-level]').forEach(el => {
-        el.addEventListener('click', () => {
-          host.querySelectorAll('.time-option[data-level]').forEach(x => x.classList.remove('selected'));
+          host.querySelectorAll('.level-step').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
           selLevel = parseInt(el.dataset.level, 10);
+          refresh();
         });
       });
-      host.querySelectorAll('.time-option[data-time]').forEach(el => {
+      host.querySelectorAll('.cadence-card').forEach(el => {
         el.addEventListener('click', () => {
-          host.querySelectorAll('.time-option[data-time]').forEach(x => x.classList.remove('selected'));
+          host.querySelectorAll('.cadence-card').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
           selTime = parseInt(el.dataset.time, 10);
           selInc = parseInt(el.dataset.inc, 10);
+          refresh();
         });
       });
-      host.querySelectorAll('.radio-pill[data-color]').forEach(el => {
+      host.querySelectorAll('.side-card').forEach(el => {
         el.addEventListener('click', () => {
-          host.querySelectorAll('.radio-pill[data-color]').forEach(x => x.classList.remove('selected'));
+          host.querySelectorAll('.side-card').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
           selColor = el.dataset.color;
+          refresh();
         });
       });
       host.querySelector('#startAI').addEventListener('click', () => {
-        if (selColor === 'r') selColor = Math.random() < 0.5 ? 'w' : 'b';
-        this.startGame('ai', { level: selLevel, time: selTime, increment: selInc, color: selColor, bot: selectedBot });
+        let color = selColor;
+        if (color === 'r') color = Math.random() < 0.5 ? 'w' : 'b';
+        this.startGame('ai', { level: selLevel, time: selTime, increment: selInc, color });
       });
+      refresh();
     },
 
     _levelLabel(l) {
@@ -779,35 +995,75 @@ init() {
       return labels[l] || '';
     },
 
+    _shortLevelLabel(l) {
+      const labels = { 1: 'Déb.', 2: 'Nov.', 3: 'Nov+', 4: 'Amat.', 5: 'Amat+', 6: 'Conf.', 7: 'Conf+', 8: 'Exp.', 9: 'Exp+', 10: 'Maître' };
+      return labels[l] || '';
+    },
+
     _renderHotSetup() {
       const host = document.getElementById('modeContent');
       if (!host) return;
+      const cadences = [
+        { time: 10, inc: 0, label: '10 min', desc: 'Rapide', icon: '🕐' },
+        { time: 5, inc: 0, label: '5 min', desc: 'Blitz', icon: '⏱️' },
+        { time: 3, inc: 0, label: '3 min', desc: 'Blitz', icon: '⚡' },
+        { time: 3, inc: 2, label: '3+2', desc: 'Blitz', icon: '🔥' },
+        { time: 15, inc: 10, label: '15+10', desc: 'Classique', icon: '🏛️' },
+        { time: 1, inc: 0, label: '1 min', desc: 'Bullet', icon: '💨' },
+        { time: 1, inc: 1, label: '1+1', desc: 'Bullet', icon: '🚀' }
+      ];
       host.innerHTML = `
-        <div class="form-group">
-          <label>Cadence</label>
-          <div class="time-select">
-            <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc">Rapide</div></div>
-            <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc">Blitz</div></div>
-            <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
-            <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc">Classique</div></div>
-            <div class="time-option" data-time="1" data-inc="1"><div class="t-label">1+1</div><div class="t-desc">Bullet</div></div>
+        <div class="arena-config">
+          <div class="arena-field">
+            <div class="field-head">
+              <span class="field-index">01</span>
+              <h3>Cadence</h3>
+              <span class="field-value" id="cadenceValue">10 min</span>
+            </div>
+            <div class="cadence-grid">
+              ${cadences.map((c, i) => `
+                <button class="cadence-card ${i === 0 ? 'selected' : ''}" data-time="${c.time}" data-inc="${c.inc}">
+                  <span class="cad-ico">${c.icon}</span>
+                  <b>${c.label}</b>
+                  <small>${c.desc}</small>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="arena-field arena-field-note">
+            <div class="note-icon">👥</div>
+            <div>
+              <b>Deux joueurs, un seul écran</b>
+              <p>Les Blancs commencent, puis les Noirs. Idéal pour jouer en famille ou tester des variantes à deux.</p>
+            </div>
+          </div>
+
+          <div class="arena-launch">
+            <div class="launch-summary">Configuration : <b id="launchText">10 min · Local ×2</b></div>
+            <button class="btn btn-cta btn-lg" id="startHot">Lancer la partie locale →</button>
           </div>
         </div>
-        <button class="btn btn-cta btn-lg btn-block mt-20" id="startHot">👥 Démarrer en local</button>
       `;
       let t = 10, inc = 0;
-      host.querySelectorAll('.time-option').forEach(el => {
+      const refresh = () => {
+        const cad = cadences.find(c => c.time === t && c.inc === inc) || cadences[0];
+        host.querySelector('#cadenceValue').textContent = cad.label;
+        host.querySelector('#launchText').textContent = `${cad.label} · Local ×2`;
+      };
+      host.querySelectorAll('.cadence-card').forEach(el => {
         el.addEventListener('click', () => {
-          host.querySelectorAll('.time-option').forEach(x => x.classList.remove('selected'));
+          host.querySelectorAll('.cadence-card').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
-          t = parseInt(el.dataset.time, 10); inc = parseInt(el.dataset.inc, 10);
+          t = parseInt(el.dataset.time, 10);
+          inc = parseInt(el.dataset.inc, 10);
+          refresh();
         });
       });
       host.querySelector('#startHot').addEventListener('click', () => {
         this.startGame('hot', { time: t, increment: inc });
       });
+      refresh();
     },
 
     // Setup multijoueur réel
@@ -815,36 +1071,48 @@ init() {
       const host = document.getElementById('modeContent');
       if (!host) return;
       host.innerHTML = `
-        <div class="form-group">
-          <label>Votre nom d'affichage</label>
-          <input class="input" id="onlineName" value="${Storage.getProfile().name || 'Joueur'}" maxlength="16">
-        </div>
-        <div class="divider"></div>
-        <h3 class="mb-10">Créer une partie</h3>
-        <p class="text-secondary mb-10" style="font-size:13px">Générez un code à partager avec votre ami, puis choisissez votre cadence.</p>
-        <div class="time-select mb-10">
-          <div class="time-option selected" data-time="10" data-inc="0"><div class="t-label">10 min</div><div class="t-desc"></div></div>
-          <div class="time-option" data-time="5" data-inc="0"><div class="t-label">5 min</div><div class="t-desc"></div></div>
-          <div class="time-option" data-time="3" data-inc="0"><div class="t-label">3 min</div><div class="t-desc"></div></div>
-          <div class="time-option" data-time="3" data-inc="2"><div class="t-label">3+2</div><div class="t-desc"></div></div>
-          <div class="time-option" data-time="1" data-inc="0"><div class="t-label">1 min</div><div class="t-desc"></div></div>
-          <div class="time-option" data-time="15" data-inc="10"><div class="t-label">15+10</div><div class="t-desc"></div></div>
-        </div>
-        <button class="btn btn-primary btn-block mb-20" id="btnHost">🔗 Créer et inviter</button>
+        <div class="online-forge">
+          <div class="online-col">
+            <div class="eyebrow">Héberger</div>
+            <h3>Créer une partie</h3>
+            <p class="text-secondary" style="font-size:13px">Générez un code, partagez-le, et la partie démarre dès que votre ami rejoint.</p>
+            <div class="form-group mt-10">
+              <label>Votre nom d'affichage</label>
+              <input class="input" id="onlineName" value="${Storage.getProfile().name || 'Joueur'}" maxlength="16">
+            </div>
+            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:8px">Cadence</label>
+            <div class="cadence-grid cadence-grid-3 mb-15">
+              <button class="cadence-card selected" data-time="10" data-inc="0"><span class="cad-ico">🕐</span><b>10 min</b><small>Rapide</small></button>
+              <button class="cadence-card" data-time="5" data-inc="0"><span class="cad-ico">⏱️</span><b>5 min</b><small>Blitz</small></button>
+              <button class="cadence-card" data-time="3" data-inc="0"><span class="cad-ico">⚡</span><b>3 min</b><small>Blitz</small></button>
+              <button class="cadence-card" data-time="3" data-inc="2"><span class="cad-ico">🔥</span><b>3+2</b><small>Blitz</small></button>
+              <button class="cadence-card" data-time="15" data-inc="10"><span class="cad-ico">🏛️</span><b>15+10</b><small>Classique</small></button>
+              <button class="cadence-card" data-time="1" data-inc="1"><span class="cad-ico">🚀</span><b>1+1</b><small>Bullet</small></button>
+            </div>
+            <button class="btn btn-primary btn-block" id="btnHost">🔗 Générer un code d'invitation</button>
+          </div>
 
-        <div class="divider"></div>
-        <h3 class="mb-10">Rejoindre une partie</h3>
-        <div class="flex gap-8">
-          <input class="input flex-1" id="onlineCode" placeholder="Code à 6 caractères" maxlength="6" style="text-transform:uppercase">
-          <button class="btn btn-blue" id="btnJoin">Rejoindre</button>
+          <div class="online-divider"><span>OU</span></div>
+
+          <div class="online-col">
+            <div class="eyebrow">Rejoindre</div>
+            <h3>Entrer dans une partie</h3>
+            <p class="text-secondary" style="font-size:13px">Vous avez reçu un code à 6 caractères ? Collez-le ici pour affronter votre ami.</p>
+            <div class="form-group mt-10">
+              <label>Code de la partie</label>
+              <input class="input code-input" id="onlineCode" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:20px;text-align:center;font-weight:700">
+            </div>
+            <button class="btn btn-blue btn-block" id="btnJoin">Rejoindre la partie →</button>
+            <div class="online-note">Astuce : le code est insensible à la casse. La connexion est directe entre navigateurs (WebRTC).</div>
+          </div>
         </div>
-        <div id="onlineStatus" class="mt-10 engine-status"></div>
+        <div id="onlineStatus" class="engine-status mt-15"></div>
       `;
 
       let t = 10, inc = 0;
-      host.querySelectorAll('.time-option').forEach(el => {
+      host.querySelectorAll('.cadence-card').forEach(el => {
         el.addEventListener('click', () => {
-          host.querySelectorAll('.time-option').forEach(x => x.classList.remove('selected'));
+          host.querySelectorAll('.cadence-card').forEach(x => x.classList.remove('selected'));
           el.classList.add('selected');
           t = parseInt(el.dataset.time, 10); inc = parseInt(el.dataset.inc, 10);
         });
@@ -865,7 +1133,7 @@ init() {
         try {
           const id = await Online.hostGame();
           status.className = 'engine-status';
-          status.innerHTML = `Partie créée ! Code : <b style="font-size:20px;letter-spacing:2px">${id}</b><br><span class="text-secondary">En attente d'un adversaire…</span>`;
+          status.innerHTML = `Partie créée ! Code : <b style="font-size:22px;letter-spacing:2px;color:var(--accent)">${id}</b><br><span class="text-secondary">En attente d'un adversaire…</span>`;
           this._waitOnlineOpponent(id, t, inc);
         } catch (e) {
           status.className = 'engine-status error';
@@ -973,12 +1241,9 @@ init() {
     },
 
     showOnlinePanel() {
-      // Sur la page play, sélectionne l'onglet en ligne
-      const tabs = this.playCard && this.playCard.querySelectorAll('.tab-btn');
-      if (tabs) {
-        const onlineTab = this.playCard.querySelector('[data-mode="online"]');
-        if (onlineTab) onlineTab.click();
-      }
+      // Sur la page play, sélectionne le mode en ligne
+      const onlineTab = this.playCard && this.playCard.querySelector('[data-mode="online"]');
+      if (onlineTab) onlineTab.click();
     },
 
     // ===================== PUZZLES =====================
@@ -1275,6 +1540,30 @@ init() {
       `;
       sec.appendChild(actCard);
 
+      // Succès / Trophées
+      const achievements = Storage.getAchievements();
+      const unlockedAch = achievements.filter(a => a.unlocked).length;
+      const achCard = document.createElement('div');
+      achCard.className = 'card mb-20';
+      achCard.innerHTML = `
+        <div class="flex justify-between items-center mb-15">
+          <h3 class="flex items-center gap-8"><span>🏆</span> Succès</h3>
+          <span class="badge ${unlockedAch ? 'badge-green' : 'badge-gold'}">${unlockedAch}/${achievements.length} débloqués</span>
+        </div>
+        <div class="achievements-grid">
+          ${achievements.map(a => `
+            <div class="achievement ${a.unlocked ? 'unlocked' : 'locked'}">
+              <div class="ach-ico">${a.unlocked ? a.icon : '🔒'}</div>
+              <div class="ach-info">
+                <div class="ach-name">${a.name}</div>
+                <div class="ach-desc">${a.desc}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      sec.appendChild(achCard);
+
       // Edit profile
       const edit = document.createElement('div');
       edit.className = 'card mb-20';
@@ -1284,7 +1573,10 @@ init() {
           <input class="input flex-1" id="profileName" value="${p.name || ''}" placeholder="Nom d'affichage">
           <button class="btn btn-primary" id="saveProfile">Enregistrer</button>
         </div>
-        <button class="btn btn-danger btn-sm mt-10" id="resetAll">Réinitialiser toutes les données</button>
+        <div class="flex gap-8 mt-10" style="flex-wrap:wrap">
+          <button class="btn btn-sm" id="exportData">⬇ Exporter mes données</button>
+          <button class="btn btn-danger btn-sm" id="resetAll">Réinitialiser toutes les données</button>
+        </div>
       `;
       sec.appendChild(edit);
 
@@ -1294,6 +1586,22 @@ init() {
         this._updateUserChip();
         ChessUI.toast('Profil enregistré', 'success');
       });
+      edit.querySelector('#exportData').addEventListener('click', () => {
+        try {
+          const json = Storage.exportData();
+          const blob = new Blob([json], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'masterchessis-profil-' + new Date().toISOString().slice(0, 10) + '.json';
+          a.click();
+          URL.revokeObjectURL(url);
+          ChessUI.toast('Données exportées', 'success');
+        } catch (e) {
+          ChessUI.toast('Export impossible', 'error');
+        }
+      });
+
       edit.querySelector('#resetAll').addEventListener('click', () => {
         if (confirm('Effacer toutes les données locales ?')) {
           Storage.resetAll();
@@ -1312,8 +1620,8 @@ init() {
           <span>⚙️</span>
           <span>Personnalisation de l'interface</span>
         </h3>
-        
-        <div class="grid grid-2 gap-20">
+
+        <div class="grid grid-3 gap-20">
           <div class="form-group">
             <label class="mb-5 block text-muted" style="font-size:13px">Thème de l'échiquier</label>
             <select class="input" id="prefBoardTheme">
@@ -1323,13 +1631,23 @@ init() {
               <option value="ocean" ${prefs.board === 'ocean' ? 'selected' : ''}>Océan (Bleu)</option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label class="mb-5 block text-muted" style="font-size:13px">Style des pièces</label>
             <select class="input" id="prefPieceStyle">
               <option value="unicode" ${prefs.pieceStyle === 'unicode' ? 'selected' : ''}>Unicode (Standard)</option>
               <option value="modern" ${prefs.pieceStyle === 'modern' ? 'selected' : ''}>Moderne (Sans-Serif)</option>
               <option value="glass" ${prefs.pieceStyle === 'glass' ? 'selected' : ''}>Effet Verre</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="mb-5 block text-muted" style="font-size:13px">Couleur d'accent</label>
+            <select class="input" id="prefAccent">
+              <option value="emerald" ${(prefs.accent || 'emerald') === 'emerald' ? 'selected' : ''}>Émeraude</option>
+              <option value="azure" ${prefs.accent === 'azure' ? 'selected' : ''}>Azur</option>
+              <option value="violet" ${prefs.accent === 'violet' ? 'selected' : ''}>Violet</option>
+              <option value="sunset" ${prefs.accent === 'sunset' ? 'selected' : ''}>Coucher de soleil</option>
             </select>
           </div>
         </div>
@@ -1352,8 +1670,13 @@ init() {
             <span class="checkmark"></span>
             Coups légaux
           </label>
+          <label class="checkbox-container">
+            <input type="checkbox" id="prefPromote" ${prefs.autoPromote ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Promotion automatique
+          </label>
         </div>
-        
+
         <div class="mt-15 text-secondary" style="font-size:12px">Les modifications sont appliquées instantanément.</div>
       `;
       sec.appendChild(settingsCard);
@@ -1363,11 +1686,13 @@ init() {
         const newPrefs = {
           board: settingsCard.querySelector('#prefBoardTheme').value,
           pieceStyle: settingsCard.querySelector('#prefPieceStyle').value,
+          accent: settingsCard.querySelector('#prefAccent').value,
           sound: settingsCard.querySelector('#prefSound').checked,
           showCoords: settingsCard.querySelector('#prefCoords').checked,
-          showLegalMoves: settingsCard.querySelector('#prefLegal').checked
+          showLegalMoves: settingsCard.querySelector('#prefLegal').checked,
+          autoPromote: settingsCard.querySelector('#prefPromote').checked
         };
-        Storage.setPrefs(newPrefs);
+        Storage.updatePref(newPrefs);
         ChessUI.toast('Préférences mises à jour', 'success', 1000);
       };
 

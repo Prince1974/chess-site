@@ -40,6 +40,24 @@
       this._buildLayout();
     },
 
+    // Démarrer directement sur un puzzle précis (puzzle du jour)
+    startWithPuzzle(id) {
+      this.pendingPuzzleId = id;
+      this.mode = 'ranked';
+      this.currentTheme = 'all';
+      if (!this.container) return;
+      this._buildLayout();
+    },
+
+    // Démarrer un entraînement ciblé sur un thème
+    startWithTheme(theme) {
+      this.pendingPuzzleId = null;
+      this.mode = 'ranked';
+      this.currentTheme = theme || 'all';
+      if (!this.container) return;
+      this._buildLayout();
+    },
+
     _buildLayout() {
       const c = this.container;
       c.innerHTML = '';
@@ -98,8 +116,20 @@
       const elo = Storage.getElo();
       const stats = Storage.getStats();
 
-      // Thèmes disponibles
-      const themes = ['all', 'Échec et mat en 1', 'Fourchette', 'Clouage', 'Enfilade', 'Sacrifice de fou en f7', 'Attaque Grecque', 'Finale de pions'];
+      // Thèmes disponibles (déduits dynamiquement des puzzles)
+      const themes = ['all', ...new Set(this.puzzles.map(p => p.theme).filter(Boolean))];
+      const activeTheme = this.currentTheme || 'all';
+      const themeIcon = (t) => {
+        if (t === 'all') return '🎯';
+        if (/mat/i.test(t)) return '👑';
+        if (/fourchette/i.test(t)) return '🍴';
+        if (/clouage/i.test(t)) return '📌';
+        if (/enfilade/i.test(t)) return '🎯';
+        if (/sacrifice/i.test(t)) return '🔥';
+        if (/attaque/i.test(t)) return '⚔️';
+        if (/finale/i.test(t)) return '♟️';
+        return '🧩';
+      };
 
       panel.innerHTML = `
         <div class="stat-grid mb-15">
@@ -117,11 +147,17 @@
           </div>
         </div>
 
-        <div class="form-group mb-10">
-          <label style="font-size:12px">Filtrer par thème tactique :</label>
-          <select class="input" id="themeSelect">
-            ${themes.map(t => `<option value="${t}" ${this.currentTheme === t ? 'selected' : ''}>${t === 'all' ? '🎯 Tous les thèmes tactiques' : t}</option>`).join('')}
-          </select>
+        <div class="mb-15">
+          <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:8px">Entraînement par thème</label>
+          <div class="theme-chips">
+            ${themes.map(t => `
+              <button class="theme-chip ${activeTheme === t ? 'active' : ''}" data-theme="${t}">
+                <span>${themeIcon(t)}</span>
+                <span class="chip-label">${t === 'all' ? 'Tous' : t}</span>
+                <span class="chip-count">${this.puzzles.filter(p => t === 'all' || p.theme === t).length}</span>
+              </button>
+            `).join('')}
+          </div>
         </div>
 
         <div class="game-info mb-15">
@@ -146,9 +182,12 @@
       this.titleEl = panel.querySelector('#puzzleTitle');
       this.ratingBadgeEl = panel.querySelector('#puzzleRatingBadge');
 
-      panel.querySelector('#themeSelect').addEventListener('change', (e) => {
-        this.currentTheme = e.target.value;
-        this._filterAndStart();
+      panel.querySelectorAll('.theme-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          this.currentTheme = chip.dataset.theme;
+          panel.querySelectorAll('.theme-chip').forEach(c => c.classList.toggle('active', c === chip));
+          this._filterAndStart();
+        });
       });
 
       panel.querySelector('#btnHint').addEventListener('click', () => this._giveHint());
@@ -168,6 +207,14 @@
       // Trier autour du Elo tactique actuel
       const elo = Storage.getElo().puzzle || 1200;
       this.selectedPuzzles = list.sort((a, b) => Math.abs(a.rating - elo) - Math.abs(b.rating - elo));
+
+      // Si un puzzle précis a été demandé, le placer en tête
+      if (this.pendingPuzzleId != null) {
+        const wanted = this.selectedPuzzles.findIndex(p => p.id === this.pendingPuzzleId);
+        if (wanted > 0) this.selectedPuzzles.unshift(this.selectedPuzzles.splice(wanted, 1)[0]);
+        this.pendingPuzzleId = null;
+      }
+
       this.index = 0;
       this._loadPuzzle(0);
     },
@@ -218,11 +265,15 @@
       const boardContainer = document.getElementById('puzzleBoard');
       if (boardContainer) {
         boardContainer.innerHTML = '';
+        const prefs = Storage.getPrefs();
         this.board = new ChessBoard({
           container: boardContainer,
           chess: this.chess,
           interactive: true,
           orientation: this.chess.turn(),
+          showCoords: prefs.showCoords,
+          showLegalMoves: prefs.showLegalMoves,
+          autoPromote: prefs.autoPromote,
           onMove: (move) => this._onPlayerMove(move)
         });
       }

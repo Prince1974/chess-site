@@ -129,11 +129,15 @@
       wrap.appendChild(side);
 
       this.boardContainer = bContainer;
+      const prefs = Storage.getPrefs();
       this.board = new ChessBoard({
         container: bContainer,
         chess: this.chess,
         interactive: true,
         orientation: this.playerColor,
+        showCoords: prefs.showCoords,
+        showLegalMoves: prefs.showLegalMoves,
+        autoPromote: prefs.autoPromote,
         onMove: (move) => this._onPlayerMove(move)
       });
 
@@ -178,6 +182,7 @@
         <button class="btn btn-sm" id="btnResign">Éd. défaite</button>
         <button class="btn btn-sm" id="btnDraw" title="Proposer nulle">½</button>
         <button class="btn btn-sm" id="btnNew">Nouvelle</button>
+        <button class="btn btn-sm" id="btnPgn" title="Copier la notation PGN">📋 PGN</button>
         <button class="btn btn-sm" id="btnFlip">⇄</button>
         <button class="btn btn-sm btn-primary" id="btnBilan" style="display:none;background:var(--gold);color:#000;font-weight:bold;grid-column: span 2">📊 Bilan de Partie</button>
       `;
@@ -277,6 +282,7 @@
       const resign = this.sidePanel.querySelector('#btnResign');
       const draw = this.sidePanel.querySelector('#btnDraw');
       const newBtn = this.sidePanel.querySelector('#btnNew');
+      const pgnBtn = this.sidePanel.querySelector('#btnPgn');
       const flip = this.sidePanel.querySelector('#btnFlip');
       const bilan = this.sidePanel.querySelector('#btnBilan');
 
@@ -284,6 +290,7 @@
       resign.addEventListener('click', () => this._resign());
       draw.addEventListener('click', () => this._offerDraw());
       newBtn.addEventListener('click', () => this._newGame());
+      pgnBtn.addEventListener('click', () => this.copyPgn());
       flip.addEventListener('click', () => this.board.flip());
       if (bilan) {
         bilan.addEventListener('click', () => {
@@ -293,6 +300,31 @@
             alert('Analyse en cours d\'initialisation...');
           }
         });
+      }
+    },
+
+    copyPgn() {
+      const pgn = this.chess.pgn() || '(aucun coup joué)';
+      const done = () => window.ChessUI && ChessUI.toast('PGN copié dans le presse-papiers', 'success');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(pgn).then(done).catch(() => this._downloadPgn(pgn));
+      } else {
+        this._downloadPgn(pgn);
+      }
+    },
+
+    _downloadPgn(pgn) {
+      try {
+        const blob = new Blob([pgn], { type: 'application/x-chess-pgn' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'masterchessis-partie.pgn';
+        a.click();
+        URL.revokeObjectURL(url);
+        if (window.ChessUI) ChessUI.toast('Fichier PGN téléchargé', 'success');
+      } catch (e) {
+        if (window.ChessUI) ChessUI.toast('Impossible d\'exporter le PGN', 'error');
       }
     },
 
@@ -341,7 +373,7 @@
           this.aiThinking = false;
           if (this.gameOver) return;
           if (!move) { this._checkEnd(); return; }
-          
+
           let m = null;
           try {
             if (typeof move === 'object' && move !== null) {
@@ -355,9 +387,8 @@
           } catch (e) { m = null; }
 
           if (m) {
-            this.board.highlightLastMove(m.from, m.to);
-            this.board.resetBoard();
             this.board.setChess(this.chess);
+            this.board.highlightLastMove(m.from, m.to);
             this.moveList.push(m.san);
             this.fenHistory.push(this.chess.fen());
             this._trackCaptured(m);

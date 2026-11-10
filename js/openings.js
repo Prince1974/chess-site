@@ -172,6 +172,14 @@
           <div class="divider my-15"></div>
           <h3>💡 Idées Stratégiques & Plans de Jeu</h3>
           <p class="text-secondary mt-10" style="font-size:14px;line-height:1.6">${o.ideas}</p>
+          ${Array.isArray(o.plans) && o.plans.length ? `
+            <div class="mt-15">
+              <h3 style="font-size:15px">🎯 Plans types</h3>
+              <ul style="margin:10px 0 0 18px;color:var(--text-secondary);font-size:14px;line-height:1.8">
+                ${o.plans.map(p => `<li>${p}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
         </div>
       `;
       d.appendChild(card);

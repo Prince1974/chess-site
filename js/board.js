@@ -22,6 +22,7 @@
       this.onClearSelect = cfg.onClearSelect || null;
       this.showCoords = cfg.showCoords !== false;
       this.showLegalMoves = cfg.showLegalMoves !== false;
+      this.autoPromote = cfg.autoPromote !== false;
       this.selected = null;
       this.legalTargets = new Set();
       this.lastMove = null;
@@ -394,6 +395,11 @@
       const piece = this.chess.get(from);
       const isPromotion = piece && piece.type === 'p' &&
         ((piece.color === 'w' && to[1] === '8') || (piece.color === 'b' && to[1] === '1'));
+
+      if (isPromotion && this.autoPromote) {
+        this._executeMove(from, to, 'q');
+        return;
+      }
 
       if (isPromotion) {
         this.pendingPromotion = { from, to, color: piece.color };

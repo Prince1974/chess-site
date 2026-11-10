@@ -9,8 +9,13 @@
 <meta name="keywords" content="échecs, chess, jouer aux échecs, puzzles échecs, apprendre échecs, l'IA optimisée, analyse, Masterchessis, échecs en ligne">
 <meta name="author" content="Masterchessis">
 <meta name="robots" content="index, follow">
-<meta name="theme-color" content="#17181c">
+<meta name="theme-color" content="#0a0d14">
 <link rel="canonical" href="https://masterchessis.netlify.app/">
+
+<!-- Polices -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 
 <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
 <meta property="og:type" content="website">
@@ -28,6 +33,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/board.css">
+<link rel="stylesheet" href="css/premium.css">
 
 <!-- Données structurées JSON-LD (schema.org) pour Google -->
 <script type="application/ld+json">
@@ -93,6 +99,50 @@
   <!-- Les vues sont injectées dynamiquement par app.js -->
 </main>
 
+<!-- ===================== PIED DE PAGE ===================== -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="brand" onclick="app.navigate('home')" style="padding:0;cursor:pointer">
+        <span class="brand-logo">♞</span>
+        <span class="brand-name">Master<span class="brand-accent">chessis</span></span>
+      </div>
+      <p>L'académie d'échecs moderne : jouez, entraînez-vous et progressez chaque jour. Gratuit, sans inscription, directement dans votre navigateur.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Explorer</h4>
+      <div class="footer-links">
+        <button onclick="app.navigate('play')">Jouer une partie</button>
+        <button onclick="app.navigate('puzzles')">Puzzles tactiques</button>
+        <button onclick="app.navigate('learn')">Académie</button>
+        <button onclick="app.navigate('openings')">Ouvertures</button>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Entraînement</h4>
+      <div class="footer-links">
+        <button onclick="app.navigate('analyze')">Analyser une partie</button>
+        <button onclick="app.navigate('profile')">Mon profil</button>
+        <button onclick="app.navigate('puzzles')">Puzzle Rush</button>
+        <button onclick="app.navigate('learn')">Cours interactifs</button>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>La plateforme</h4>
+      <div class="footer-links">
+        <button onclick="app.navigate('home')">Accueil</button>
+        <button onclick="app.navigate('profile')">Mes statistiques</button>
+        <button onclick="app.navigate('play')">Multijoueur</button>
+        <span style="color:var(--text-muted);font-size:13px">100% gratuit</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Masterchessis — Tous droits réservés.</span>
+    <span>Conçu avec <span class="heart">♥</span> pour les amoureux des échecs.</span>
+  </div>
+</footer>
+
 <!-- ===================== TOAST / MODALES ===================== -->
 <div id="toastContainer" class="toast-container"></div>
 <div id="modalRoot"></div>
@@ -108,10 +158,11 @@
     <ul>
       <li>Jouer contre l'IA à 10 niveaux de difficulté progressifs</li>
       <li>Multijoueur en ligne (WebRTC / Socket.io)</li>
-      <li>Entraîneur de puzzles tactiques classés & Puzzle Rush</li>
-      <li>Cours d'échecs progressifs interactifs du débutant à l'avancé</li>
-      <li>Explorateur d'ouvertures (Sicilienne, Italienne, Espagnole…)</li>
+      <li>40 puzzles tactiques classés, puzzle du jour & Puzzle Rush</li>
+      <li>17 cours interactifs avec coach virtuel, du débutant à l'avancé</li>
+      <li>34 ouvertures explorables avec idées et plans stratégiques</li>
       <li>Analyse de parties avec évaluation en temps réel</li>
+      <li>Succès, quêtes quotidiennes, XP et thèmes personnalisables</li>
     </ul>
     <p><strong>Activez JavaScript</strong> pour profiter de toutes les fonctionnalités interactives.</p>
   </div>
@@ -124,6 +175,7 @@
 <script src="data/puzzles.js"></script>
 <script src="data/openings.js"></script>
 <script src="data/lessons.js"></script>
+<script src="data/quotes.js"></script>
 <script src="js/board.js"></script>
 <script src="js/game.js"></script>
 <script src="js/online.js"></script>

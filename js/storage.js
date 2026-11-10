@@ -315,11 +315,12 @@
         autoPromote: true,
         showCoords: true,
         showLegalMoves: true,
-        animations: true
+        animations: true,
+        accent: 'emerald' // 'emerald' | 'azure' | 'violet' | 'sunset'
       });
     },
-    setPrefs(p) { 
-      this.set('prefs', p); 
+    setPrefs(p) {
+      this.set('prefs', p);
       this.applyTheme();
     },
     updatePref(patch) {
@@ -331,7 +332,7 @@
     applyTheme() {
       const p = this.getPrefs();
       const root = document.documentElement;
-      
+
       // Thèmes de plateau (couleurs)
       const themes = {
         classic: { light: '#ebecd0', dark: '#779556', accent: '#f5f682' },
@@ -339,7 +340,7 @@
         dark: { light: '#4b4b4b', dark: '#2b2b2b', accent: '#6b6b6b' },
         ocean: { light: '#b0c4de', dark: '#4682b4', accent: '#87ceeb' }
       };
-      
+
       const t = themes[p.board] || themes.classic;
       root.style.setProperty('--board-light', t.light);
       root.style.setProperty('--board-dark', t.dark);
@@ -348,6 +349,13 @@
       // Classes globales pour le style de pièces
       document.body.classList.remove('piece-unicode', 'piece-modern', 'piece-glass');
       document.body.classList.add('piece-' + (p.pieceStyle || 'unicode'));
+
+      // Thème d'accentuation de l'interface
+      ['emerald', 'azure', 'violet', 'sunset'].forEach(a => document.body.classList.remove('accent-' + a));
+      document.body.classList.add('accent-' + (p.accent || 'emerald'));
+
+      // Synchroniser le son avec les préférences
+      if (window.Sound) Sound.enabled = p.sound !== false;
     },
 
     // ---------- Statistiques d'activité globales ----------
@@ -397,6 +405,38 @@
       if (key in a) {
         this.updateActivity({ [key]: (a[key] || 0) + 1 });
       }
+    },
+
+    // ---------- Succès / Trophées ----------
+    getAchievements() {
+      const s = this.getStats();
+      const streak = this.getStreak();
+      const elo = this.getElo();
+      const xp = this.getXp();
+      const lessons = Object.values(this.getLessons()).filter(l => l && l.done).length;
+      const lessonsTotal = (window.LESSONS || []).length;
+      const progress = this.getPuzzleProgress();
+      const puzzlesSolved = Object.values(progress).filter(p => p && p.solved).length;
+
+      const defs = [
+        { id: 'first_game', icon: '♟️', name: 'Premier pas', desc: 'Jouer une partie', test: () => (s.games || 0) >= 1 },
+        { id: 'first_win', icon: '🏅', name: 'Première victoire', desc: 'Gagner une partie', test: () => (s.wins || 0) >= 1 },
+        { id: 'ten_games', icon: '🎮', name: 'Habitué', desc: 'Jouer 10 parties', test: () => (s.games || 0) >= 10 },
+        { id: 'puzzle_10', icon: '🧩', name: 'Tacticien', desc: 'Résoudre 10 puzzles', test: () => puzzlesSolved >= 10 },
+        { id: 'puzzle_50', icon: '🧠', name: 'Cerveau tactique', desc: 'Résoudre 50 puzzles', test: () => puzzlesSolved >= 50 },
+        { id: 'rush_10', icon: '⚡', name: 'Éclair', desc: '10 points en Puzzle Rush', test: () => (s.rushHighScore || 0) >= 10 },
+        { id: 'lesson_1', icon: '📚', name: 'Élève studieux', desc: 'Terminer une leçon', test: () => lessons >= 1 },
+        { id: 'lesson_all', icon: '🎓', name: 'Diplômé', desc: 'Terminer toutes les leçons', test: () => lessonsTotal > 0 && lessons >= lessonsTotal },
+        { id: 'streak_7', icon: '🔥', name: 'Semaine parfaite', desc: '7 jours consécutifs', test: () => (streak.count || 0) >= 7 },
+        { id: 'elo_1500', icon: '📈', name: 'En progression', desc: 'Atteindre 1500 Elo rapide', test: () => (elo.rapid || 0) >= 1500 },
+        { id: 'xp_1000', icon: '⭐', name: 'Vétéran', desc: 'Accumuler 1000 XP', test: () => xp >= 1000 },
+        { id: 'xp_5000', icon: '💎', name: 'Légende', desc: 'Accumuler 5000 XP', test: () => xp >= 5000 }
+      ];
+
+      return defs.map(a => ({
+        id: a.id, icon: a.icon, name: a.name, desc: a.desc,
+        unlocked: !!a.test()
+      }));
     },
 
     // Exportation complète des données pour l'administrateur

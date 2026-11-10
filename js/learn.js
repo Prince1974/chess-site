@@ -195,11 +195,15 @@
       panel.querySelector('#btnLessonReset').addEventListener('click', () => this._renderStepView());
 
       // Initialiser le plateau
+      const prefs = Storage.getPrefs();
       this.board = new ChessBoard({
         container: bWrap,
         chess: this.chess,
         interactive: true,
         orientation: step.turn || 'w',
+        showCoords: prefs.showCoords,
+        showLegalMoves: prefs.showLegalMoves,
+        autoPromote: prefs.autoPromote,
         onMove: (move) => this._onPlayerLessonMove(move)
       });
     },

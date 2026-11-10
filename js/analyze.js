@@ -36,98 +36,166 @@
     _build() {
       const c = this.container;
       c.innerHTML = '';
+
+      const head = document.createElement('div');
+      head.className = 'arena-head lab-head';
+      head.innerHTML = `
+        <div>
+          <div class="eyebrow">Le Laboratoire</div>
+          <h1 class="arena-title">Radiographiez <span>votre partie</span></h1>
+          <p class="arena-sub">Importez un PGN ou jouez des coups : le moteur évalue chaque position, coup par coup.</p>
+        </div>
+        <div class="lab-badges">
+          <span class="lab-badge">⚙️ Moteur local</span>
+          <span class="lab-badge">📄 PGN</span>
+          <span class="lab-badge">⚡ Temps réel</span>
+        </div>
+      `;
+      c.appendChild(head);
+
       const layout = document.createElement('div');
-      layout.className = 'analyze-layout';
+      layout.className = 'analyze-layout lab-layout';
       c.appendChild(layout);
 
-      // Eval bar
+      // Rail d'évaluation
       const evalCol = document.createElement('div');
       evalCol.className = 'eval-col';
       const evalBar = document.createElement('div');
-      evalBar.className = 'eval-bar';
+      evalBar.className = 'eval-bar lab-eval-bar';
       evalBar.innerHTML = '<div class="eval-white" id="evalWhite"></div><div class="eval-black" id="evalBlack"></div><div class="eval-text" id="evalText">0.0</div>';
       evalCol.appendChild(evalBar);
+      evalCol.insertAdjacentHTML('beforeend', '<div class="eval-caption">BLANCS</div>');
       layout.appendChild(evalCol);
 
-      // Board
+      // Plateau
       const boardCol = document.createElement('div');
-      boardCol.className = 'board-col';
+      boardCol.className = 'board-col lab-board-col';
       const bWrap = document.createElement('div');
       bWrap.id = 'analyzeBoard';
       boardCol.appendChild(bWrap);
       layout.appendChild(boardCol);
 
-      // Panel
+      // Panneau
       const panel = document.createElement('div');
-      panel.className = 'side-panel';
+      panel.className = 'side-panel lab-panel';
       layout.appendChild(panel);
 
-      // Controls
-      const controls = document.createElement('div');
-      controls.className = 'analyze-controls';
-      controls.innerHTML = `
-        <button class="btn btn-sm" id="aStart">⏮</button>
-        <button class="btn btn-sm" id="aPrev">◀</button>
-        <button class="btn btn-sm" id="aNext">▶</button>
-        <button class="btn btn-sm" id="aEnd">⏭</button>
-        <button class="btn btn-sm" id="aFlip">⇄</button>
-        <button class="btn btn-sm" id="aAuto">Auto</button>
+      panel.innerHTML = `
+        <div class="lab-card lab-engine-card">
+          <div class="lab-card-head">
+            <span class="eyebrow">Moteur</span>
+            <span class="engine-status" id="engineStatus">Initialisation…</span>
+          </div>
+          <div class="lab-bestmove">
+            <div class="lab-bestmove-label">Meilleur coup</div>
+            <div id="bestMove" class="lab-bestmove-value">—</div>
+          </div>
+        </div>
+
+        <div class="lab-card">
+          <div class="lab-card-head">
+            <span class="eyebrow">Timeline</span>
+            <span class="badge badge-blue" id="aPlyBadge">Coup 0</span>
+          </div>
+          <input type="range" class="lab-range" id="aRange" min="0" max="0" value="0">
+          <div class="analyze-controls lab-controls">
+            <button class="btn btn-sm" id="aStart" title="Début">⏮</button>
+            <button class="btn btn-sm" id="aPrev" title="Précédent">◀</button>
+            <button class="btn btn-sm" id="aNext" title="Suivant">▶</button>
+            <button class="btn btn-sm" id="aEnd" title="Fin">⏭</button>
+            <button class="btn btn-sm" id="aFlip" title="Retourner">⇄</button>
+            <button class="btn btn-sm btn-blue" id="aAuto" title="Jouer le meilleur coup">Auto ▶</button>
+          </div>
+        </div>
+
+        <div class="lab-card">
+          <div class="lab-card-head">
+            <span class="eyebrow">Notation</span>
+            <span class="badge" id="aMoveCount">0 coup</span>
+          </div>
+          <div class="move-list lab-movelist" id="aMoveList"></div>
+        </div>
+
+        <div class="lab-card lab-import">
+          <div class="lab-card-head">
+            <span class="eyebrow">Importer</span>
+            <span class="badge badge-gold">PGN</span>
+          </div>
+          <textarea class="textarea" id="pgnInput" rows="3" placeholder="Collez un PGN, ou déposez un fichier .pgn…"></textarea>
+          <div class="flex gap-8 mt-10">
+            <button class="btn btn-primary btn-sm flex-1" id="pgnLoad">Charger le PGN</button>
+            <button class="btn btn-sm" id="pgnClear">Effacer</button>
+          </div>
+          <div class="lab-drop" id="pgnDrop">📥 Glissez-déposez un fichier PGN ici</div>
+          <input type="file" id="pgnFile" accept=".pgn,text/plain" style="display:none">
+        </div>
       `;
-      panel.appendChild(controls);
-
-      // Engine status
-      const status = document.createElement('div');
-      status.className = 'engine-status';
-      status.id = 'engineStatus';
-      status.textContent = 'Initialisation du moteur…';
-      panel.appendChild(status);
-
-      // Best move
-      const best = document.createElement('div');
-      best.className = 'game-info';
-      best.innerHTML = '<div class="game-info-title"><span>Meilleur coup</span></div><div id="bestMove" style="font-size:20px;font-weight:800;color:var(--accent)">—</div>';
-      panel.appendChild(best);
-
-      // Move list
-      const mv = document.createElement('div');
-      mv.className = 'game-info';
-      mv.innerHTML = '<div class="game-info-title"><span>Coups</span></div><div class="move-list" id="aMoveList"></div>';
-      panel.appendChild(mv);
-
-      // PGN import
-      const imp = document.createElement('div');
-      imp.className = 'game-info';
-      imp.innerHTML = `
-        <div class="game-info-title"><span>Importer une partie</span></div>
-        <textarea class="textarea" id="pgnInput" rows="3" placeholder="Collez un PGN ici…"></textarea>
-        <button class="btn btn-sm btn-block mt-10" id="pgnLoad">Charger</button>
-      `;
-      panel.appendChild(imp);
 
       this.evalBar = document.getElementById('evalWhite');
       this.evalText = document.getElementById('evalText');
       this.statusEl = document.getElementById('engineStatus');
       this.bestMoveEl = document.getElementById('bestMove');
       this.moveListEl = document.getElementById('aMoveList');
+      this.rangeEl = document.getElementById('aRange');
+      this.plyBadge = document.getElementById('aPlyBadge');
+      this.moveCountEl = document.getElementById('aMoveCount');
 
-      // Board
+      // Plateau
+      const prefs = Storage.getPrefs();
       this.board = new ChessBoard({
         container: document.getElementById('analyzeBoard'),
         chess: this.chess,
         interactive: false,
-        orientation: 'w'
+        orientation: 'w',
+        showCoords: prefs.showCoords
       });
 
       this._renderMoveList();
 
-      // Bind controls
-      controls.querySelector('#aStart').addEventListener('click', () => this._goto(0));
-      controls.querySelector('#aPrev').addEventListener('click', () => this._goto(this.currentIndex - 1));
-      controls.querySelector('#aNext').addEventListener('click', () => this._goto(this.currentIndex + 1));
-      controls.querySelector('#aEnd').addEventListener('click', () => this._goto(this.fenHistory.length - 1));
-      controls.querySelector('#aFlip').addEventListener('click', () => this.board.flip());
-      controls.querySelector('#aAuto').addEventListener('click', () => this._autoPlay());
+      // Contrôles
+      document.getElementById('aStart').addEventListener('click', () => this._goto(0));
+      document.getElementById('aPrev').addEventListener('click', () => this._goto(this.currentIndex - 1));
+      document.getElementById('aNext').addEventListener('click', () => this._goto(this.currentIndex + 1));
+      document.getElementById('aEnd').addEventListener('click', () => this._goto(this.fenHistory.length - 1));
+      document.getElementById('aFlip').addEventListener('click', () => this.board.flip());
+      document.getElementById('aAuto').addEventListener('click', () => this._autoPlay());
+      this.rangeEl.addEventListener('input', (e) => this._goto(parseInt(e.target.value, 10)));
       document.getElementById('pgnLoad').addEventListener('click', () => this._loadPgn());
+      document.getElementById('pgnClear').addEventListener('click', () => {
+        document.getElementById('pgnInput').value = '';
+      });
+
+      const fileInput = document.getElementById('pgnFile');
+      const drop = document.getElementById('pgnDrop');
+      drop.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          document.getElementById('pgnInput').value = reader.result;
+          this._loadPgn();
+        };
+        reader.readAsText(file);
+      });
+      ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.add('over');
+      }));
+      ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.remove('over');
+      }));
+      drop.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          document.getElementById('pgnInput').value = reader.result;
+          this._loadPgn();
+        };
+        reader.readAsText(file);
+      });
     },
 
     _goto(idx) {
@@ -173,10 +241,23 @@
         rows.push(row);
       }
       rows.forEach(r => this.moveListEl.appendChild(r));
+      this._updateRange(hist.length);
+    },
+
+    _updateRange(totalMoves) {
+      if (this.rangeEl) {
+        this.rangeEl.max = Math.max(0, this.fenHistory.length - 1);
+        this.rangeEl.value = this.currentIndex;
+      }
+      if (this.plyBadge) this.plyBadge.textContent = 'Coup ' + this.currentIndex;
+      if (this.moveCountEl) {
+        const n = totalMoves != null ? totalMoves : this.chess.history().length;
+        this.moveCountEl.textContent = n + ' coup' + (n > 1 ? 's' : '');
+      }
     },
 
     _analyze() {
-      if (this.analyzing) return;
+      const token = (this.analyzeToken = (this.analyzeToken || 0) + 1);
       this.analyzing = true;
       
       const isPro = Storage.isPro();
@@ -186,8 +267,9 @@
       this.statusEl.className = 'engine-status think';
       
       const fen = this.chess.fen();
-      Engine.analyze(fen, { depth: depth, onInfo: (info) => this._onInfo(info) })
+      Engine.analyze(fen, { depth: depth, onInfo: (info) => { if (token === this.analyzeToken) this._onInfo(info); } })
         .then((res) => {
+          if (token !== this.analyzeToken) return;
           this.analyzing = false;
           if (res && res.bestMove) {
             this.bestMoveEl.textContent = res.bestMove;
@@ -196,6 +278,7 @@
           this.statusEl.className = 'engine-status';
         })
         .catch(() => {
+          if (token !== this.analyzeToken) return;
           this.analyzing = false;
           this.statusEl.textContent = 'Moteur indisponible';
           this.statusEl.className = 'engine-status error';
@@ -207,7 +290,10 @@
       // EVAL bar
       const score = info.score;
       const whitePct = this._scoreToPct(score);
-      if (this.evalBar) this.evalBar.style.height = whitePct + '%';
+      if (this.evalBar) {
+        this.evalBar.style.height = whitePct + '%';
+        this.evalBar.style.setProperty('--eval-pct', whitePct + '%');
+      }
       if (this.evalText) this.evalText.textContent = Engine.formatScore(info);
     },
 
