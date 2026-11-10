@@ -539,8 +539,6 @@
 
       return new Promise((resolve) => {
         const depth = (opts && opts.depth) ? opts.depth : 12;
-        this.stockfish.postMessage(`position fen ${fen}`);
-        this.stockfish.postMessage(`go depth ${depth}`);
 
         const listener = (e) => {
           const line = e.data;
@@ -568,6 +566,8 @@
           }
         };
         this.stockfish.addEventListener('message', listener);
+        this.stockfish.postMessage(`position fen ${fen}`);
+        this.stockfish.postMessage(`go depth ${depth}`);
       });
     },
 

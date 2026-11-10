@@ -23,6 +23,13 @@
       this.navigate(route, true); // true = replaceState pour l'entrée initiale
 
       this._updateUserChip();
+      // Restaurer la session serveur (JWT) si présente, puis ouvrir un éventuel lien de réinitialisation.
+      if (window.Auth) {
+        Auth.restore().then(() => {
+          this._updateUserChip();
+          if (Auth.handleResetLink) Auth.handleResetLink();
+        }).catch(() => {});
+      }
       // Boucle d'horloge
       setInterval(() => {
         if (this.game) this.game.updateClockDisplay();
@@ -113,16 +120,56 @@
         }
       });
 
-      document.getElementById('hamburger').addEventListener('click', () => {
-        document.getElementById('mainNav').classList.toggle('open');
+      // Menu mobile / tablette : ouverture robuste, fermeture au clic extérieur,
+      // à la touche Échap, au changement de route et au redimensionnement desktop.
+      const nav = document.getElementById('mainNav');
+      const hamburger = document.getElementById('hamburger');
+
+      const setMenu = (open) => {
+        if (!nav || !hamburger) return;
+        nav.classList.toggle('open', open);
+        document.body.classList.toggle('nav-open', open);
+        hamburger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        hamburger.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+        hamburger.innerHTML = open ? '&times;' : '&#9776;';
+        let backdrop = document.getElementById('navBackdrop');
+        if (open && !backdrop) {
+          backdrop = document.createElement('div');
+          backdrop.id = 'navBackdrop';
+          backdrop.className = 'nav-backdrop';
+          backdrop.addEventListener('click', () => setMenu(false));
+          document.body.appendChild(backdrop);
+        } else if (!open && backdrop) {
+          backdrop.remove();
+        }
+      };
+      this._setMenu = setMenu;
+
+      hamburger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setMenu(!nav.classList.contains('open'));
       });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') setMenu(false);
+      });
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1080) setMenu(false);
+      });
+    },
+
+    handleUserChip() {
+      if (window.Auth && !Auth.isLogged()) {
+        Auth.openModal('login');
+        return;
+      }
+      this.navigate('profile');
     },
 
     navigate(route, replace = false) {
       const valid = ['home', 'play', 'puzzles', 'learn', 'openings', 'analyze', 'community', 'profile', 'secret-dashboard'];
       if (!valid.includes(route)) route = 'home';
-      // Fermer la nav mobile
-      document.getElementById('mainNav').classList.remove('open');
+      // Fermer la nav mobile proprement
+      if (this._setMenu) this._setMenu(false);
       
       // Mettre à jour l'URL
       const path = route === 'home' ? '/' : '/' + route;
@@ -145,6 +192,7 @@
     },
 
     showGameReview(gameInstance) {
+      if (window.Review) return window.Review.open(gameInstance);
       if (!Storage.isPro()) {
         this.showProModal();
         return;
@@ -395,19 +443,32 @@
       const p = Storage.getProfile();
       const lvl = Storage.getLevel();
       const streak = Storage.getStreak();
+      const logged = !!(window.Auth ? Auth.isLogged() : (p.username && localStorage.getItem('masterchess_jwt')));
+      const chip = document.getElementById('userChip');
+      if (chip) chip.classList.toggle('guest', !logged);
+
       const adminBadge = Storage.isAdmin() ? '<span class="badge badge-gold" style="font-size:10px;padding:2px 4px;margin-left:4px">👑 Admin</span>' : '';
       const proBadge = (Storage.isPro() && !Storage.isAdmin()) ? '<span class="badge badge-accent" style="font-size:10px;padding:2px 4px;margin-left:4px">💎 Pro</span>' : '';
       const streakBadge = (streak && streak.count > 1) ? `<span style="font-size:11px;margin-left:4px">🔥${streak.count}</span>` : '';
 
       const countryFlag = (p.region && window.Countries) ? `<span class="user-flag" title="${Countries.name(p.region)}">${Countries.flag(p.region)}</span> ` : '';
-      document.getElementById('userName').innerHTML = `${countryFlag}${p.name || 'Invité'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${proBadge}${adminBadge}`;
-      
-      const avatarEl = document.getElementById('avatarLetter');
-      if (p.photo) {
-        avatarEl.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
-        avatarEl.style.background = 'transparent';
+      const nameEl = document.getElementById('userName');
+      if (!logged) {
+        if (nameEl) nameEl.innerHTML = '<span class="user-login-label">Se connecter</span>';
       } else {
-        avatarEl.textContent = (p.avatar || p.name || 'J').charAt(0).toUpperCase();
+        if (nameEl) nameEl.innerHTML = `${countryFlag}${p.name || p.username || 'Joueur'} <span class="badge badge-blue" style="font-size:10px;padding:2px 5px">Niv.${lvl.level}</span>${streakBadge}${proBadge}${adminBadge}`;
+      }
+
+      const avatarEl = document.getElementById('avatarLetter');
+      if (!avatarEl) return;
+      if (logged && p.photo) {
+        avatarEl.innerHTML = `<img src="${p.photo}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+        avatarEl.style.background = 'transparent';
+      } else if (!logged) {
+        avatarEl.textContent = '♟';
+        avatarEl.style.background = '';
+      } else {
+        avatarEl.textContent = (p.avatar || p.name || p.username || 'J').charAt(0).toUpperCase();
         avatarEl.style.background = '';
       }
 
@@ -1433,19 +1494,30 @@
         reader.readAsDataURL(file);
       });
 
-      // Auth Account Card
+      // Carte de compte : connexion / inscription / gestion de session
       const authCard = document.createElement('div');
       authCard.className = 'card mb-20';
-      if (jwtToken && p.username) {
+      const loggedIn = !!(window.Auth ? Auth.isLogged() : (jwtToken && p.username));
+      if (loggedIn) {
         authCard.innerHTML = `
-          <h3 class="mb-10">👤 Compte en Ligne</h3>
-          <p>Connecté en tant que <b>${p.username}</b> ${p.region && window.Countries ? `<span class="badge badge-blue">${Countries.flag(p.region)} ${Countries.name(p.region)}</span>` : ''}</p>
+          <div class="account-head">
+            <div class="account-avatar">${p.photo ? `<img src="${p.photo}" alt="">` : (p.avatar || p.username || 'J').charAt(0).toUpperCase()}</div>
+            <div class="account-copy">
+              <span class="eyebrow">Compte en ligne</span>
+              <h3>${p.username || p.name}</h3>
+              <p>${p.email ? p.email : 'Compte Masterchessis'} ${p.region && window.Countries ? `<span class="badge badge-blue">${Countries.flag(p.region)} ${Countries.name(p.region)}</span>` : ''}</p>
+            </div>
+            <span class="account-live"><span></span> Connecté</span>
+          </div>
           <div class="profile-region-edit">
             <label class="text-muted" for="profileRegionSelect">Pays / région du club</label>
             <select class="input" id="profileRegionSelect">${Countries.options(p.region || '', true)}</select>
             <button class="btn btn-secondary btn-sm" id="btnSaveRegion">Enregistrer</button>
           </div>
-          <button class="btn btn-danger btn-sm mt-10" id="btnLogoutAcc">Se Déconnecter</button>
+          <div class="account-actions">
+            <button class="btn btn-sm btn-secondary" id="btnChangePassword">🔑 Changer le mot de passe</button>
+            <button class="btn btn-sm btn-danger" id="btnLogoutAcc">Se déconnecter</button>
+          </div>
         `;
         authCard.querySelector('#btnSaveRegion').addEventListener('click', async () => {
           const region = authCard.querySelector('#profileRegionSelect').value;
@@ -1462,58 +1534,41 @@
           this.renderProfile(sec);
           this._updateUserChip();
         });
+        authCard.querySelector('#btnChangePassword').addEventListener('click', () => {
+          if (window.Auth) Auth.openModal('password');
+        });
         authCard.querySelector('#btnLogoutAcc').addEventListener('click', async () => {
-          try { await fetch((backendUrl || '') + '/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
-          localStorage.removeItem('masterchess_jwt');
-          Storage.updateProfile({ name: 'Invité', username: null });
+          if (window.Auth) await Auth.logout();
+          else {
+            try { await fetch((backendUrl || '') + '/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+            localStorage.removeItem('masterchess_jwt');
+            Storage.updateProfile({ name: 'Invité', username: null, email: null });
+          }
           ChessUI.toast('Déconnecté', 'info');
           this.renderProfile(sec);
           this._updateUserChip();
         });
       } else {
         authCard.innerHTML = `
-          <h3 class="mb-10">🔐 Connexion & Inscription</h3>
-          <p class="text-muted mb-10">Connectez-vous pour conserver votre classement Elo et votre historique sur le serveur.</p>
-          <div class="grid grid-2 gap-10">
-            <input class="input" id="authUsernameInput" placeholder="Nom d'utilisateur">
-            <input class="input" type="password" id="authPasswordInput" placeholder="Mot de passe">
+          <div class="auth-teaser">
+            <div class="auth-teaser-copy">
+              <span class="eyebrow">Votre progression vous attend</span>
+              <h3>Créez votre compte en 30 secondes</h3>
+              <p>Retrouvez votre Elo, vos parties et votre progression sur tous vos appareils. Inscription par email ou avec Google.</p>
+              <div class="auth-benefits">
+                <span>✓ Sauvegarde cloud</span>
+                <span>✓ Amis & classement</span>
+                <span>✓ Bilan de partie</span>
+              </div>
+            </div>
+            <div class="auth-teaser-actions">
+              <button class="btn btn-primary btn-lg" id="btnRegisterAcc">Créer un compte</button>
+              <button class="btn btn-secondary" id="btnLoginAcc">J'ai déjà un compte</button>
+            </div>
           </div>
-          <div class="mt-10">
-            <label class="text-muted" style="font-size:12px" for="authRegionInput">Votre pays / région (drapeau affiché dans le club)</label>
-            <select class="input mt-5" id="authRegionInput">${Countries.options(Storage.getProfile().region || '', true)}</select>
-          </div>
-          <div class="flex gap-10 mt-10">
-            <button class="btn btn-primary" id="btnLoginAcc">Se Connecter</button>
-            <button class="btn" id="btnRegisterAcc">S'inscrire</button>
-          </div>
-          <div id="authMsg" class="mt-10 text-muted" style="font-size:12px"></div>
         `;
-        const doAuth = async (action) => {
-          const u = authCard.querySelector('#authUsernameInput').value.trim();
-          const pass = authCard.querySelector('#authPasswordInput').value;
-          const region = authCard.querySelector('#authRegionInput').value;
-          const msgEl = authCard.querySelector('#authMsg');
-          msgEl.textContent = 'Connexion...';
-          try {
-            const res = await fetch((backendUrl || '') + '/api/' + action, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ username: u, password: pass, region })
-            });
-            const data = await res.json();
-            if (!res.ok) { msgEl.textContent = data.error || 'Erreur.'; return; }
-            if (data.token) localStorage.setItem('masterchess_jwt', data.token);
-            Storage.updateProfile({ name: data.user.username, username: data.user.username, avatar: data.user.username.charAt(0), region: data.user.region || region });
-            ChessUI.toast('Bienvenue, ' + data.user.username + ' !', 'success');
-            this.renderProfile(sec);
-            this._updateUserChip();
-          } catch(e) {
-            msgEl.textContent = 'Impossible de contacter le serveur backend. Vérifiez l\'URL du serveur.';
-          }
-        };
-        authCard.querySelector('#btnLoginAcc').addEventListener('click', () => doAuth('login'));
-        authCard.querySelector('#btnRegisterAcc').addEventListener('click', () => doAuth('register'));
+        authCard.querySelector('#btnLoginAcc').addEventListener('click', () => { if (window.Auth) Auth.openModal('login'); });
+        authCard.querySelector('#btnRegisterAcc').addEventListener('click', () => { if (window.Auth) Auth.openModal('register'); });
       }
       sec.appendChild(authCard);
 

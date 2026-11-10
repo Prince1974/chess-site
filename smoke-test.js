@@ -28,6 +28,8 @@ const scripts = [
   'js/learn.js',
   'js/analyze.js',
   'js/openings.js',
+  'js/review.js',
+  'js/auth.js',
   'js/admin.js',
   'js/social.js',
   'js/app.js'
@@ -64,7 +66,7 @@ for (const s of scripts) {
 }
 
 // Vérifier que les globaux sont exposés
-const globals = ['Chess', 'Sound', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'Admin', 'Social', 'Countries', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
+const globals = ['Chess', 'Sound', 'Storage', 'Engine', 'ChessBoard', 'Game', 'Online', 'Puzzles', 'Learn', 'Analyze', 'Openings', 'Review', 'Auth', 'Admin', 'Social', 'Countries', 'app', 'ChessUI', 'PUZZLES', 'OPENINGS', 'LESSONS'];
 const missing = globals.filter(g => !window[g]);
 if (missing.length) errors.push('Missing globals: ' + missing.join(', '));
 

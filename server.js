@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -14,6 +15,9 @@ const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-masterchessis-secret-key-change-in-prod';
 const PORT = process.env.PORT || 8080;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'masterchess2026';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const APP_URL = (process.env.APP_URL || process.env.PUBLIC_URL || 'https://masterchessis.netlify.app').replace(/\/+$/, '');
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 /* ---------- Base de données Abstraction (PostgreSQL ou JSON file-based) ---------- */
 let dbQuery, dbGet, dbRun, jsonRead, jsonWrite;
@@ -61,6 +65,9 @@ if (usePostgres) {
             wins: 15,
             losses: 2,
             draws: 1,
+            email: null,
+            google_id: null,
+            avatar_url: null,
             created_at: new Date().toISOString()
           },
           {
@@ -74,6 +81,9 @@ if (usePostgres) {
             wins: 42,
             losses: 18,
             draws: 8,
+            email: null,
+            google_id: null,
+            avatar_url: null,
             created_at: new Date().toISOString()
           },
           {
@@ -87,6 +97,9 @@ if (usePostgres) {
             wins: 28,
             losses: 14,
             draws: 5,
+            email: null,
+            google_id: null,
+            avatar_url: null,
             created_at: new Date().toISOString()
           }
         ],
@@ -126,7 +139,16 @@ if (usePostgres) {
   dbGet = async (sql, params = []) => {
     const db = readDb();
     if (sql.includes('FROM users WHERE username = ?')) {
-      return db.users.find(u => u.username.toLowerCase() === String(params[0]).toLowerCase()) || null;
+      return db.users.find(u => u.username && u.username.toLowerCase() === String(params[0]).toLowerCase()) || null;
+    }
+    if (sql.includes('FROM users WHERE email = ?')) {
+      return db.users.find(u => u.email && String(u.email).toLowerCase() === String(params[0]).toLowerCase()) || null;
+    }
+    if (sql.includes('FROM users WHERE google_id = ?')) {
+      return db.users.find(u => u.google_id && String(u.google_id) === String(params[0])) || null;
+    }
+    if (sql.includes('FROM users WHERE reset_token = ?')) {
+      return db.users.find(u => u.reset_token && String(u.reset_token) === String(params[0])) || null;
     }
     if (sql.includes('FROM users WHERE id = ?')) {
       return db.users.find(u => Number(u.id) === Number(params[0])) || null;
@@ -140,13 +162,19 @@ if (usePostgres) {
   dbRun = async (sql, params = []) => {
     const db = readDb();
     if (sql.includes('INSERT INTO users')) {
+      const withEmail = sql.includes('email');
       const newUser = {
         id: db.users.length ? Math.max(...db.users.map(u => u.id || 0)) + 1 : 1,
         username: params[0],
-        password_hash: params[1],
-        role: params[2] || 'user',
-        region: params[3] || '',
-        is_pro: params[2] === 'admin',
+        email: withEmail ? (params[1] || null) : null,
+        password_hash: withEmail ? params[2] : params[1],
+        role: (withEmail ? params[3] : params[2]) || 'user',
+        region: (withEmail ? params[4] : params[3]) || '',
+        google_id: withEmail ? (params[5] || null) : null,
+        avatar_url: withEmail ? (params[6] || null) : null,
+        reset_token: null,
+        reset_expires: null,
+        is_pro: (withEmail ? params[3] : params[2]) === 'admin',
         rating: 1200,
         wins: 0,
         losses: 0,
@@ -156,6 +184,39 @@ if (usePostgres) {
       db.users.push(newUser);
       writeDb(db);
       return { changes: 1, id: newUser.id };
+    } else if (sql.includes('UPDATE users SET reset_token = ?')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[2]));
+      if (u) {
+        u.reset_token = params[0] || null;
+        u.reset_expires = params[1] || null;
+        writeDb(db);
+      }
+      return { changes: 1 };
+    } else if (sql.includes('UPDATE users SET password_hash = ?') && sql.includes('reset_token = NULL')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[1]));
+      if (u) {
+        u.password_hash = params[0];
+        u.reset_token = null;
+        u.reset_expires = null;
+        writeDb(db);
+      }
+      return { changes: 1 };
+    } else if (sql.includes('UPDATE users SET password_hash = ? WHERE id = ?')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[1]));
+      if (u) {
+        u.password_hash = params[0];
+        writeDb(db);
+      }
+      return { changes: 1 };
+    } else if (sql.includes('UPDATE users SET email = ?, google_id = ?, avatar_url = ?')) {
+      const u = db.users.find(u => Number(u.id) === Number(params[3]));
+      if (u) {
+        u.email = params[0] || u.email || null;
+        u.google_id = params[1] || u.google_id || null;
+        u.avatar_url = params[2] || u.avatar_url || null;
+        writeDb(db);
+      }
+      return { changes: 1 };
     } else if (sql.includes('UPDATE users SET region = ? WHERE id = ?')) {
       const u = db.users.find(u => Number(u.id) === Number(params[1]));
       if (u) {
@@ -250,6 +311,13 @@ if (usePostgres) {
       try {
         await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pro BOOLEAN DEFAULT FALSE;');
         await dbRun("ALTER TABLE users ADD COLUMN IF NOT EXISTS region TEXT DEFAULT '';");
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;');
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;');
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;');
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;');
+        await dbRun('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;');
+        await dbRun('CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email)) WHERE email IS NOT NULL;');
+        await dbRun('CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_idx ON users (google_id) WHERE google_id IS NOT NULL;');
       } catch (e) {
         // Colonnes déjà présentes ou base ancienne
       }
@@ -295,6 +363,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5500',
   'http://localhost:5500'
 ];
+
+app.set('trust proxy', 1);
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -377,27 +447,67 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString(), postgres: usePostgres });
 });
 
+app.get('/api/auth/config', (req, res) => {
+  res.json({ googleClientId: GOOGLE_CLIENT_ID || '' });
+});
+
+async function sendResetEmail(email, resetUrl) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.MAIL_FROM || 'Masterchessis <noreply@masterchessis.app>';
+  if (!apiKey) return false;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: 'Réinitialisation de votre mot de passe Masterchessis',
+      html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;padding:24px;background:#0f1117;color:#e6e8ee;border-radius:16px">
+        <h2 style="color:#f0c46a">♞ Masterchessis</h2>
+        <p>Vous avez demandé à réinitialiser votre mot de passe.</p>
+        <p style="margin:28px 0"><a href="${resetUrl}" style="background:#f0c46a;color:#111;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:700">Choisir un nouveau mot de passe</a></p>
+        <p style="color:#9aa0ae;font-size:13px">Ce lien expire dans 1 heure. Si vous n’êtes pas à l’origine de cette demande, ignorez cet email.</p>
+      </div>`
+    })
+  });
+  return res.ok;
+}
+
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, password, region } = req.body || {};
+    const username = String((req.body && req.body.username) || '').trim();
+    const password = String((req.body && req.body.password) || '');
+    const region = req.body && req.body.region;
+    const email = normalizeEmail(req.body && req.body.email);
     const safeRegion = /^[A-Z]{2}$/.test(String(region || '').toUpperCase()) ? String(region).toUpperCase() : '';
-    if (!username || !password || username.length < 3 || password.length < 4) {
-      return res.status(400).json({ error: 'Pseudo (3+ car.) et mot de passe (4+ car.) requis.' });
+    if (!username || !password || username.length < 3 || password.length < 6) {
+      return res.status(400).json({ error: 'Pseudo (3+ car.) et mot de passe (6+ car.) requis.' });
     }
-    if (!/^[a-zA-Z0-9_\-]+$/.test(username)) {
-      return res.status(400).json({ error: 'Le pseudo ne peut contenir que des lettres, chiffres, - et _.' });
+    if (!/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
+      return res.status(400).json({ error: 'Le pseudo doit contenir 3 à 24 lettres, chiffres, - ou _.' });
+    }
+    if (!validEmail(email)) {
+      return res.status(400).json({ error: 'Adresse email invalide.' });
+    }
+    if (!rateLimit('register:' + clientIp(req), 8, 60 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Trop de tentatives. Réessayez plus tard.' });
     }
     const exists = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
     if (exists) return res.status(409).json({ error: 'Ce pseudo est déjà pris.' });
+    const emailExists = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
+    if (emailExists) return res.status(409).json({ error: 'Un compte utilise déjà cet email.' });
 
     const hash = bcrypt.hashSync(password, 10);
     const role = (username.toLowerCase() === 'admin') ? 'admin' : 'user';
-    await dbRun('INSERT INTO users (username, password_hash, role, region) VALUES (?,?,?,?)', [username, hash, role, safeRegion]);
-    const user = await dbGet('SELECT id, username, role, rating, wins, losses, draws, is_pro, region FROM users WHERE username = ?', [username]);
+    await dbRun(
+      'INSERT INTO users (username, email, password_hash, role, region, google_id, avatar_url) VALUES (?,?,?,?,?,?,?)',
+      [username, email, hash, role, safeRegion, null, null]
+    );
+    const user = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
 
     const token = signToken(user);
     res.cookie('masterchess_token', token, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
-    res.json({ user: publicUser(user), token });
+    res.json({ user: selfUser(user), token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur lors de l’inscription.' });
@@ -406,30 +516,161 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    const { username, password } = req.body || {};
-    const row = await dbGet('SELECT * FROM users WHERE username = ?', [username || '']);
-    if (!row || !bcrypt.compareSync(password || '', row.password_hash)) {
+    const username = req.body && req.body.username;
+    const password = String((req.body && req.body.password) || '');
+    const identifier = String((req.body && req.body.identifier) || username || '').trim();
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Email/pseudo et mot de passe requis.' });
+    }
+    if (!rateLimit('login:' + clientIp(req) + ':' + identifier.toLowerCase(), 10, 15 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+    }
+    let row = await dbGet('SELECT * FROM users WHERE username = ?', [identifier]);
+    if (!row && validEmail(identifier)) {
+      row = await dbGet('SELECT * FROM users WHERE email = ?', [normalizeEmail(identifier)]);
+    }
+    if (!row || !row.password_hash || !bcrypt.compareSync(password, row.password_hash)) {
       return res.status(401).json({ error: 'Identifiants incorrects.' });
     }
     const token = signToken({ id: row.id, username: row.username, role: row.role || 'user' });
     res.cookie('masterchess_token', token, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
-    res.json({
-      user: {
-        id: row.id,
-        username: row.username,
-        role: row.role || 'user',
-        rating: row.rating,
-        is_pro: row.is_pro,
-        region: row.region || '',
-        wins: row.wins,
-        losses: row.losses,
-        draws: row.draws
-      },
-      token
-    });
+    res.json({ user: selfUser(row), token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur lors de la connexion.' });
+  }
+});
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    if (!GOOGLE_CLIENT_ID) {
+      return res.status(503).json({ error: 'La connexion Google n’est pas configurée.' });
+    }
+    const credential = req.body && req.body.credential;
+    if (!credential) return res.status(400).json({ error: 'Jeton Google manquant.' });
+    const verifyRes = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential));
+    const payload = await verifyRes.json().catch(() => ({}));
+    if (!verifyRes.ok || !payload.sub) {
+      return res.status(401).json({ error: 'Jeton Google invalide.' });
+    }
+    if (payload.aud !== GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ error: 'Jeton Google destiné à une autre application.' });
+    }
+    if (payload.email_verified !== true && payload.email_verified !== 'true') {
+      return res.status(401).json({ error: 'Email Google non vérifié.' });
+    }
+    const email = normalizeEmail(payload.email);
+    if (!validEmail(email)) return res.status(400).json({ error: 'Email Google invalide.' });
+
+    let row = await dbGet('SELECT * FROM users WHERE google_id = ?', [payload.sub]);
+    if (!row) row = await dbGet('SELECT * FROM users WHERE email = ?', [email]);
+
+    if (row) {
+      await dbRun('UPDATE users SET email = ?, google_id = ?, avatar_url = ? WHERE id = ?', [
+        email, payload.sub, payload.picture || row.avatar_url || null, row.id
+      ]);
+      row = await dbGet('SELECT * FROM users WHERE id = ?', [row.id]);
+    } else {
+      let base = String(payload.name || payload.given_name || email.split('@')[0] || 'joueur')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) || 'joueur';
+      if (base.length < 3) base = ('joueur' + base).slice(0, 20);
+      let username = base;
+      let suffix = 1;
+      while (await dbGet('SELECT id FROM users WHERE username = ?', [username])) {
+        username = (base.slice(0, 18) + suffix).slice(0, 24);
+        suffix += 1;
+      }
+      const randomPassword = crypto.randomBytes(24).toString('hex');
+      const hash = bcrypt.hashSync(randomPassword, 10);
+      const role = (username.toLowerCase() === 'admin') ? 'admin' : 'user';
+      await dbRun(
+        'INSERT INTO users (username, email, password_hash, role, region, google_id, avatar_url) VALUES (?,?,?,?,?,?,?)',
+        [username, email, hash, role, '', payload.sub, payload.picture || null]
+      );
+      row = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
+    }
+
+    const token = signToken(row);
+    res.cookie('masterchess_token', token, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
+    res.json({ user: selfUser(row), token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la connexion Google.' });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body && req.body.email);
+    if (!validEmail(email)) return res.status(400).json({ error: 'Adresse email invalide.' });
+    if (!rateLimit('forgot:' + clientIp(req), 6, 60 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Trop de demandes. Réessayez plus tard.' });
+    }
+    const generic = { message: 'Si ce compte existe, un lien de réinitialisation vient d’être envoyé.' };
+    const user = await dbGet('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user) return res.json(generic);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    await dbRun('UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?', [hashResetToken(token), expires, user.id]);
+
+    const resetUrl = `${APP_URL}/?reset_token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+    const sent = await sendResetEmail(email, resetUrl).catch(() => false);
+    if (!sent && !IS_PRODUCTION) {
+      return res.json(Object.assign({}, generic, { resetUrl }));
+    }
+    res.json(generic);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de l’envoi du lien.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const token = String((req.body && req.body.token) || '');
+    const password = String((req.body && req.body.password) || '');
+    if (!token) return res.status(400).json({ error: 'Lien invalide.' });
+    if (password.length < 6) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+    if (!rateLimit('reset:' + clientIp(req), 10, 60 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Trop de tentatives. Réessayez plus tard.' });
+    }
+    const hashed = hashResetToken(token);
+    const user = await dbGet('SELECT * FROM users WHERE reset_token = ?', [hashed]);
+    if (!user) return res.status(400).json({ error: 'Lien invalide ou déjà utilisé.' });
+    if (!user.reset_expires || new Date(user.reset_expires).getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Lien expiré. Demandez-en un nouveau.' });
+    }
+    const hash = bcrypt.hashSync(password, 10);
+    await dbRun('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?', [hash, user.id]);
+    const fresh = await dbGet('SELECT * FROM users WHERE id = ?', [user.id]);
+    const jwtToken = signToken(fresh);
+    res.cookie('masterchess_token', jwtToken, { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000, sameSite: 'none', secure: true });
+    res.json({ user: selfUser(fresh), token: jwtToken });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation.' });
+  }
+});
+
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié.' });
+    const currentPassword = String((req.body && req.body.currentPassword) || '');
+    const newPassword = String((req.body && req.body.newPassword) || '');
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères.' });
+    const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    if (!user.password_hash || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+      return res.status(401).json({ error: 'Mot de passe actuel incorrect.' });
+    }
+    const hash = bcrypt.hashSync(newPassword, 10);
+    await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
+    res.json({ ok: true, message: 'Mot de passe mis à jour.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors du changement de mot de passe.' });
   }
 });
 
@@ -440,8 +681,8 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/me', async (req, res) => {
   if (!req.user) return res.json({ user: null });
-  const row = await dbGet('SELECT id, username, role, rating, wins, losses, draws, is_pro, region, created_at FROM users WHERE id = ?', [req.user.id]);
-  res.json({ user: publicUser(row) });
+  const row = await dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  res.json({ user: selfUser(row) });
 });
 
 app.get('/api/profile/:username', async (req, res) => {
@@ -481,8 +722,43 @@ function publicUser(u) {
     id: u.id, username: u.username, role: u.role || 'user',
     rating: u.rating || 1200, wins: u.wins || 0, losses: u.losses || 0,
     draws: u.draws || 0, is_pro: !!u.is_pro, region: u.region || '',
+    avatar_url: u.avatar_url || null,
     created_at: u.created_at
   };
+}
+
+function selfUser(u) {
+  if (!u) return null;
+  return Object.assign(publicUser(u), { email: u.email || null });
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function validEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+const rateBuckets = new Map();
+function rateLimit(key, limit, windowMs) {
+  const now = Date.now();
+  const bucket = rateBuckets.get(key) || { count: 0, reset: now + windowMs };
+  if (now > bucket.reset) {
+    bucket.count = 0;
+    bucket.reset = now + windowMs;
+  }
+  bucket.count += 1;
+  rateBuckets.set(key, bucket);
+  return bucket.count <= limit;
+}
+
+function clientIp(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
 }
 
 async function friendshipRows(userId) {

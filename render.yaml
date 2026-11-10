@@ -9,3 +9,11 @@ services:
         generateValue: true
       - key: PORT
         value: 10000
+      - key: APP_URL
+        value: https://masterchessis.netlify.app
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false

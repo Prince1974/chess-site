@@ -20,14 +20,22 @@
 
     async render(container, gameData = null) {
       this.container = container;
+      this.reviewData = (gameData && gameData.reviewData) || null;
       if (gameData) {
         this.fenHistory = gameData.fenHistory;
-        this.chess = new Chess(this.fenHistory[this.fenHistory.length - 1]);
+        this.chess = new Chess(this.fenHistory[0] || undefined);
+        if (gameData.moveList && gameData.moveList.length) {
+          gameData.moveList.forEach(san => { try { this.chess.move(san); } catch (e) {} });
+        } else if (this.fenHistory.length > 1) {
+          this.chess = new Chess(this.fenHistory[this.fenHistory.length - 1]);
+        }
         this.currentIndex = this.fenHistory.length - 1;
+        this.sanHistory = (gameData.moveList || this.chess.history() || []).slice();
       } else {
         this.chess = Engine.newGame();
         this.currentIndex = 0;
         this.fenHistory = [this.chess.fen()];
+        this.sanHistory = [];
       }
       this._build();
       this._analyze();
@@ -210,8 +218,16 @@
 
     _highlightLast() {
       if (this.currentIndex > 0) {
-        const hist = this.chess.history({ verbose: true });
-        const last = hist[hist.length - 1];
+        let last = null;
+        if (this.sanHistory && this.sanHistory.length >= this.currentIndex) {
+          const replay = new Chess(this.fenHistory[0] || undefined);
+          for (let i = 0; i < this.currentIndex; i++) {
+            try { last = replay.move(this.sanHistory[i]); } catch (e) { last = null; }
+          }
+        } else {
+          const hist = this.chess.history({ verbose: true });
+          last = hist[hist.length - 1];
+        }
         if (last) this.board.highlightLastMove(last.from, last.to);
       }
     },
@@ -219,7 +235,7 @@
     _renderMoveList() {
       if (!this.moveListEl) return;
       this.moveListEl.innerHTML = '';
-      const hist = this.chess.history();
+      const hist = this.sanHistory || this.chess.history();
       const rows = [];
       for (let i = 0; i < hist.length; i += 2) {
         const row = document.createElement('div');
@@ -228,14 +244,32 @@
         num.className = 'move-num';
         num.textContent = (i / 2 + 1) + '.';
         row.appendChild(num);
+        const detailFor = (ply) => {
+          if (!this.reviewData || !this.reviewData.details) return null;
+          return this.reviewData.details[ply - 1] || null;
+        };
+        const decorate = (el, ply) => {
+          const d = detailFor(ply);
+          if (!d) return;
+          const meta = window.Review && window.Review.LABELS ? window.Review.LABELS[d.verdict] : null;
+          if (meta) {
+            el.classList.add(meta.cls);
+            el.title = meta.label + ' · perte ' + d.loss + ' cp';
+            el.insertAdjacentHTML('beforeend', `<i class="lab-verdict">${meta.icon}</i>`);
+          }
+          el.dataset.ply = ply;
+          el.addEventListener('click', () => this._goto(ply));
+        };
         const w = document.createElement('span');
         w.className = 'move-san' + (i === this.currentIndex - 1 ? ' current' : '');
         w.textContent = hist[i];
+        decorate(w, i + 1);
         row.appendChild(w);
         if (hist[i + 1]) {
           const b = document.createElement('span');
           b.className = 'move-san' + (i + 1 === this.currentIndex - 1 ? ' current' : '');
           b.textContent = hist[i + 1];
+          decorate(b, i + 2);
           row.appendChild(b);
         }
         rows.push(row);
@@ -333,6 +367,7 @@
         hist.forEach(m => {
           try { c2.move(m.san); this.fenHistory.push(c2.fen()); } catch (e) {}
         });
+        this.sanHistory = hist.map(m => m.san);
         this.currentIndex = this.fenHistory.length - 1;
         this.board.setChess(this.chess);
         this._renderMoveList();
